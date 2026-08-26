@@ -1,0 +1,1250 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#08111f">
+
+  <title>Hausfußball Live</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      background: #08111f;
+      color: white;
+      min-height: 100vh;
+    }
+
+    button {
+      font: inherit;
+      cursor: pointer;
+    }
+
+    .app {
+      max-width: 720px;
+      margin: auto;
+      min-height: 100vh;
+      padding-bottom: 60px;
+    }
+
+    header {
+      padding: 24px 20px;
+      background: #0d192b;
+      border-bottom: 1px solid #243653;
+    }
+
+    header h1 {
+      font-size: 27px;
+    }
+
+    header p {
+      color: #91a0b8;
+      margin-top: 5px;
+      font-size: 14px;
+    }
+
+    .nav {
+      display: flex;
+      gap: 8px;
+      padding: 12px 15px;
+      background: #0d192b;
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      border-bottom: 1px solid #243653;
+    }
+
+    .nav button {
+      flex: 1;
+      border: 0;
+      border-radius: 11px;
+      padding: 11px 5px;
+      background: #17263d;
+      color: #91a0b8;
+      font-weight: bold;
+    }
+
+    .nav button.active {
+      background: #2563eb;
+      color: white;
+    }
+
+    .page {
+      display: none;
+      padding: 20px;
+    }
+
+    .page.active {
+      display: block;
+    }
+
+    .title {
+      font-size: 23px;
+      font-weight: 800;
+      margin-bottom: 15px;
+    }
+
+    .match {
+      background: #101d31;
+      border: 1px solid #243653;
+      border-radius: 20px;
+      padding: 21px;
+      margin-bottom: 18px;
+    }
+
+    .live {
+      display: inline-block;
+      background: #dc2626;
+      border-radius: 30px;
+      padding: 6px 11px;
+      font-size: 12px;
+      font-weight: 800;
+      margin-bottom: 18px;
+    }
+
+    .teams {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      text-align: center;
+      gap: 10px;
+    }
+
+    .team {
+      width: 38%;
+      font-weight: 800;
+      font-size: 15px;
+    }
+
+    .score {
+      font-size: 40px;
+      font-weight: 900;
+    }
+
+    .time {
+      color: #91a0b8;
+      font-size: 12px;
+      margin-top: 5px;
+    }
+
+    .ticker {
+      background: #0d192b;
+      border: 1px solid #243653;
+      border-radius: 20px;
+      padding: 18px;
+    }
+
+    .ticker-title {
+      font-size: 19px;
+      font-weight: 800;
+      margin-bottom: 5px;
+    }
+
+    .event {
+      display: flex;
+      gap: 13px;
+      padding: 15px 0;
+      border-bottom: 1px solid #243653;
+    }
+
+    .event:last-child {
+      border-bottom: 0;
+    }
+
+    .icon {
+      width: 30px;
+      text-align: center;
+      font-size: 21px;
+    }
+
+    .event-content {
+      flex: 1;
+    }
+
+    .event-title {
+      font-weight: 800;
+    }
+
+    .event-info {
+      color: #91a0b8;
+      font-size: 13px;
+      margin-top: 4px;
+    }
+
+    .admin {
+      margin-top: 18px;
+      background: #101d31;
+      border: 1px solid #243653;
+      border-radius: 20px;
+      padding: 18px;
+    }
+
+    .admin h2 {
+      font-size: 18px;
+      margin-bottom: 14px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .grid button {
+      border: 0;
+      border-radius: 13px;
+      padding: 14px 7px;
+      background: #2563eb;
+      color: white;
+      font-weight: 800;
+    }
+
+    .yellow {
+      background: #b88600 !important;
+    }
+
+    .red {
+      background: #c62828 !important;
+    }
+
+    .gray {
+      background: #475569 !important;
+    }
+
+    .green {
+      background: #15803d !important;
+    }
+
+    .danger {
+      width: 100%;
+      margin-top: 10px;
+      padding: 11px;
+      border-radius: 11px;
+      border: 1px solid #334764;
+      background: transparent;
+      color: #91a0b8;
+    }
+
+    .form {
+      background: #101d31;
+      border: 1px solid #243653;
+      border-radius: 20px;
+      padding: 18px;
+    }
+
+    label {
+      display: block;
+      color: #91a0b8;
+      font-size: 13px;
+      font-weight: bold;
+      margin-bottom: 7px;
+    }
+
+    input {
+      width: 100%;
+      padding: 13px;
+      margin-bottom: 14px;
+      border-radius: 11px;
+      border: 1px solid #334764;
+      background: #0b1627;
+      color: white;
+      outline: none;
+    }
+
+    .save {
+      width: 100%;
+      border: 0;
+      border-radius: 12px;
+      padding: 14px;
+      background: #2563eb;
+      color: white;
+      font-weight: 800;
+    }
+
+    .connection {
+      margin-top: 15px;
+      text-align: center;
+      color: #91a0b8;
+      font-size: 13px;
+    }
+
+    footer {
+      text-align: center;
+      color: #64748b;
+      padding: 25px;
+      font-size: 12px;
+    }
+
+    @media(max-width:430px) {
+      .score {
+        font-size: 34px;
+      }
+
+      .team {
+        font-size: 13px;
+      }
+
+      .nav button {
+        font-size: 12px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="app">
+
+  <header>
+    <h1>⚽ Hausfußball Live</h1>
+    <p>Dein Hobbyfußball. Dein Live-Ticker.</p>
+  </header>
+
+
+  <div class="nav">
+
+    <button id="homeNav" class="active" onclick="showPage('home')">
+      🏠 Home
+    </button>
+
+    <button id="liveNav" onclick="showPage('live')">
+      🔴 Live
+    </button>
+
+    <button id="adminNav" onclick="showPage('admin')">
+      🎛️ Spiel
+    </button>
+
+  </div>
+
+
+  <!-- HOME -->
+
+  <section id="home" class="page active">
+
+    <div class="title">
+      🔴 Aktuelles Spiel
+    </div>
+
+    <div class="match">
+
+      <span class="live" id="homeStatus">
+        ● LIVE
+      </span>
+
+      <div class="teams">
+
+        <div class="team" id="homeTeam1">
+          Hausmannschaft
+        </div>
+
+        <div>
+          <div class="score" id="score1">
+            0 : 0
+          </div>
+
+          <div class="time" id="time1">
+            1. Halbzeit · 00:00
+          </div>
+        </div>
+
+        <div class="team" id="awayTeam1">
+          Gegner
+        </div>
+
+      </div>
+
+    </div>
+
+    <div class="connection" id="connection">
+      🔄 Verbindung wird hergestellt...
+    </div>
+
+  </section>
+
+
+  <!-- LIVE -->
+
+  <section id="live" class="page">
+
+    <div class="title">
+      🔴 Live-Ticker
+    </div>
+
+    <div class="match">
+
+      <span class="live" id="liveStatus">
+        ● LIVE
+      </span>
+
+      <div class="teams">
+
+        <div class="team" id="homeTeam2">
+          Hausmannschaft
+        </div>
+
+        <div>
+
+          <div class="score" id="score2">
+            0 : 0
+          </div>
+
+          <div class="time" id="time2">
+            1. Halbzeit · 00:00
+          </div>
+
+        </div>
+
+        <div class="team" id="awayTeam2">
+          Gegner
+        </div>
+
+      </div>
+
+    </div>
+
+
+    <div class="ticker">
+
+      <div class="ticker-title">
+        📋 Spielverlauf
+      </div>
+
+      <div id="events">
+
+        <div class="event">
+
+          <div class="icon">
+            ⏱️
+          </div>
+
+          <div class="event-content">
+
+            <div class="event-title">
+              Noch keine Ereignisse
+            </div>
+
+            <div class="event-info">
+              Das Spiel ist bereit.
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  </section>
+
+
+  <!-- ADMIN -->
+
+  <section id="admin" class="page">
+
+    <div class="title">
+      🎛️ Spielverwaltung
+    </div>
+
+
+    <div class="form">
+
+      <label>
+        Heimteam
+      </label>
+
+      <input
+        id="homeInput"
+        value="Hausmannschaft"
+      >
+
+      <label>
+        Auswärtsteam
+      </label>
+
+      <input
+        id="awayInput"
+        value="Gegner"
+      >
+
+      <button class="save" onclick="saveTeams()">
+        💾 Teams speichern
+      </button>
+
+    </div>
+
+
+    <div class="admin">
+
+      <h2>
+        ⚽ Ereignis hinzufügen
+      </h2>
+
+      <div class="grid">
+
+        <button onclick="goal(0)">
+          ⚽ Tor Heim
+        </button>
+
+        <button onclick="goal(1)">
+          ⚽ Tor Gast
+        </button>
+
+        <button class="yellow" onclick="card('yellow')">
+          🟨 Gelb
+        </button>
+
+        <button class="red" onclick="card('red')">
+          🟥 Rot
+        </button>
+
+        <button class="gray" onclick="substitution()">
+          🔄 Wechsel
+        </button>
+
+        <button class="gray" onclick="halfTime()">
+          ⏸️ Halbzeit
+        </button>
+
+        <button class="green" onclick="endGame()">
+          🏁 Abpfiff
+        </button>
+
+        <button class="gray" onclick="undoEvent()">
+          ↩️ Rückgängig
+        </button>
+
+      </div>
+
+      <button class="danger" onclick="resetGame()">
+        🗑️ Spiel zurücksetzen
+      </button>
+
+    </div>
+
+  </section>
+
+
+  <footer>
+    Hausfußball Live · Firebase Edition
+  </footer>
+
+</div>
+
+
+<!-- FIREBASE -->
+
+<script type="module">
+
+  import { initializeApp }
+    from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
+
+  import {
+    getFirestore,
+    doc,
+    setDoc,
+    onSnapshot
+  } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+
+
+  /* =========================
+     FIREBASE KONFIGURATION
+  ========================= */
+
+  const firebaseConfig = {
+
+    apiKey: "AIzaSyAzk1qGSesg45fBr4ZSmdpxSXCSGnc0KFY",
+
+    authDomain: "hausfussball.firebaseapp.com",
+
+    projectId: "hausfussball",
+
+    storageBucket: "hausfussball.firebasestorage.app",
+
+    messagingSenderId: "993563856895",
+
+    appId: "1:993563856895:web:9de5ebd3f028d7670621ca"
+
+  };
+
+
+  /* =========================
+     FIREBASE STARTEN
+  ========================= */
+
+  const app =
+    initializeApp(firebaseConfig);
+
+  const db =
+    getFirestore(app);
+
+
+  const matchRef =
+    doc(db, "matches", "current");
+
+
+  /* =========================
+     SPIELDATEN
+  ========================= */
+
+  let game = {
+
+    homeTeam: "Hausmannschaft",
+
+    awayTeam: "Gegner",
+
+    homeScore: 0,
+
+    awayScore: 0,
+
+    running: true,
+
+    half: 1,
+
+    seconds: 0,
+
+    events: []
+
+  };
+
+
+  /* =========================
+     FIRESTORE LIVE SYNC
+  ========================= */
+
+  onSnapshot(matchRef, function(snapshot) {
+
+    if (snapshot.exists()) {
+
+      game = snapshot.data();
+
+      render();
+
+    } else {
+
+      saveGame();
+
+    }
+
+    document.getElementById("connection").textContent =
+      "🟢 Live mit Firebase verbunden";
+
+  }, function(error) {
+
+    console.error(error);
+
+    document.getElementById("connection").textContent =
+      "🔴 Firebase-Verbindung fehlgeschlagen";
+
+  });
+
+
+  /* =========================
+     SPEICHERN
+  ========================= */
+
+  async function saveGame() {
+
+    try {
+
+      await setDoc(matchRef, game);
+
+    } catch(error) {
+
+      console.error(error);
+
+      alert(
+        "Die Daten konnten nicht gespeichert werden."
+      );
+
+    }
+
+  }
+
+
+  /* =========================
+     ZEIT
+  ========================= */
+
+  setInterval(function() {
+
+    if (!game.running) {
+      return;
+    }
+
+    game.seconds++;
+
+    updateTime();
+
+  }, 1000);
+
+
+  function getMinute() {
+
+    const minutes =
+      Math.floor(game.seconds / 60);
+
+    const seconds =
+      game.seconds % 60;
+
+    return (
+      String(minutes).padStart(2, "0")
+      + ":"
+      + String(seconds).padStart(2, "0")
+    );
+
+  }
+
+
+  function updateTime() {
+
+    const text =
+      game.half
+      + ". Halbzeit · "
+      + getMinute();
+
+
+    document.getElementById("time1").textContent =
+      text;
+
+    document.getElementById("time2").textContent =
+      text;
+
+  }
+
+
+  /* =========================
+     NAVIGATION
+  ========================= */
+
+  window.showPage = function(page) {
+
+    document.querySelectorAll(".page")
+      .forEach(function(section) {
+
+        section.classList.remove("active");
+
+      });
+
+
+    document.getElementById(page)
+      .classList.add("active");
+
+
+    document.querySelectorAll(".nav button")
+      .forEach(function(button) {
+
+        button.classList.remove("active");
+
+      });
+
+
+    if (page === "home") {
+
+      document.getElementById("homeNav")
+        .classList.add("active");
+
+    }
+
+    if (page === "live") {
+
+      document.getElementById("liveNav")
+        .classList.add("active");
+
+    }
+
+    if (page === "admin") {
+
+      document.getElementById("adminNav")
+        .classList.add("active");
+
+    }
+
+  };
+
+
+  /* =========================
+     TEAMS
+  ========================= */
+
+  window.saveTeams = async function() {
+
+    const home =
+      document.getElementById("homeInput")
+        .value.trim();
+
+    const away =
+      document.getElementById("awayInput")
+        .value.trim();
+
+
+    if (!home || !away) {
+
+      alert("Bitte beide Teams eingeben.");
+
+      return;
+
+    }
+
+
+    game.homeTeam = home;
+
+    game.awayTeam = away;
+
+
+    await saveGame();
+
+    render();
+
+  };
+
+
+  /* =========================
+     EREIGNIS
+  ========================= */
+
+  function addEvent(icon, title, info) {
+
+    if (!game.events) {
+
+      game.events = [];
+
+    }
+
+
+    game.events.unshift({
+
+      icon: icon,
+
+      title: title,
+
+      info: info
+
+    });
+
+  }
+
+
+  /* =========================
+     TOR
+  ========================= */
+
+  window.goal = async function(team) {
+
+    if (!game.running) {
+
+      alert("Das Spiel ist beendet.");
+
+      return;
+
+    }
+
+
+    const player =
+      prompt("⚽ Torschütze:");
+
+
+    if (!player) {
+      return;
+    }
+
+
+    if (team === 0) {
+
+      game.homeScore++;
+
+      addEvent(
+        "⚽",
+        "TOR! " + game.homeTeam,
+        player + " · " + getMinute()
+      );
+
+    } else {
+
+      game.awayScore++;
+
+      addEvent(
+        "⚽",
+        "TOR! " + game.awayTeam,
+        player + " · " + getMinute()
+      );
+
+    }
+
+
+    await saveGame();
+
+  };
+
+
+  /* =========================
+     KARTE
+  ========================= */
+
+  window.card = async function(type) {
+
+    if (!game.running) {
+
+      alert("Das Spiel ist beendet.");
+
+      return;
+
+    }
+
+
+    const player =
+      prompt("👤 Spieler:");
+
+
+    if (!player) {
+      return;
+    }
+
+
+    if (type === "yellow") {
+
+      addEvent(
+        "🟨",
+        "Gelbe Karte",
+        player + " · " + getMinute()
+      );
+
+    }
+
+
+    if (type === "red") {
+
+      addEvent(
+        "🟥",
+        "Rote Karte",
+        player + " · " + getMinute()
+      );
+
+    }
+
+
+    await saveGame();
+
+  };
+
+
+  /* =========================
+     WECHSEL
+  ========================= */
+
+  window.substitution = async function() {
+
+    if (!game.running) {
+
+      alert("Das Spiel ist beendet.");
+
+      return;
+
+    }
+
+
+    const out =
+      prompt("🔄 Spieler raus:");
+
+
+    if (!out) {
+      return;
+    }
+
+
+    const inside =
+      prompt("Spieler rein:");
+
+
+    if (!inside) {
+      return;
+    }
+
+
+    addEvent(
+      "🔄",
+      "Auswechslung",
+      out + " → " + inside
+      + " · " + getMinute()
+    );
+
+
+    await saveGame();
+
+  };
+
+
+  /* =========================
+     HALBZEIT
+  ========================= */
+
+  window.halfTime = async function() {
+
+    if (!game.running) {
+      return;
+    }
+
+
+    addEvent(
+      "⏸️",
+      "HALBZEIT",
+      game.homeScore
+      + " : "
+      + game.awayScore
+    );
+
+
+    game.half = 2;
+
+    game.seconds = 0;
+
+
+    await saveGame();
+
+  };
+
+
+  /* =========================
+     ABPFIFF
+  ========================= */
+
+  window.endGame = async function() {
+
+    if (!game.running) {
+      return;
+    }
+
+
+    game.running = false;
+
+
+    addEvent(
+      "🏁",
+      "ABPFIFF",
+      "Endstand "
+      + game.homeScore
+      + " : "
+      + game.awayScore
+    );
+
+
+    await saveGame();
+
+  };
+
+
+  /* =========================
+     RÜCKGÄNGIG
+  ========================= */
+
+  window.undoEvent = async function() {
+
+    if (!game.events || game.events.length === 0) {
+
+      alert("Keine Ereignisse.");
+
+      return;
+
+    }
+
+
+    const event =
+      game.events.shift();
+
+
+    if (
+      event.icon === "⚽"
+      && event.title ===
+      "TOR! " + game.homeTeam
+    ) {
+
+      if (game.homeScore > 0) {
+        game.homeScore--;
+      }
+
+    }
+
+
+    if (
+      event.icon === "⚽"
+      && event.title ===
+      "TOR! " + game.awayTeam
+    ) {
+
+      if (game.awayScore > 0) {
+        game.awayScore--;
+      }
+
+    }
+
+
+    await saveGame();
+
+  };
+
+
+  /* =========================
+     RESET
+  ========================= */
+
+  window.resetGame = async function() {
+
+    if (
+      !confirm(
+        "⚠️ Das komplette Spiel zurücksetzen?"
+      )
+    ) {
+
+      return;
+
+    }
+
+
+    game = {
+
+      homeTeam:
+        document.getElementById("homeInput").value
+        || "Hausmannschaft",
+
+      awayTeam:
+        document.getElementById("awayInput").value
+        || "Gegner",
+
+      homeScore: 0,
+
+      awayScore: 0,
+
+      running: true,
+
+      half: 1,
+
+      seconds: 0,
+
+      events: []
+
+    };
+
+
+    await saveGame();
+
+    render();
+
+  };
+
+
+  /* =========================
+     RENDER
+  ========================= */
+
+  function render() {
+
+    document.getElementById("homeTeam1").textContent =
+      game.homeTeam;
+
+    document.getElementById("awayTeam1").textContent =
+      game.awayTeam;
+
+    document.getElementById("homeTeam2").textContent =
+      game.homeTeam;
+
+    document.getElementById("awayTeam2").textContent =
+      game.awayTeam;
+
+
+    const score =
+      game.homeScore
+      + " : "
+      + game.awayScore;
+
+
+    document.getElementById("score1").textContent =
+      score;
+
+    document.getElementById("score2").textContent =
+      score;
+
+
+    document.getElementById("homeInput").value =
+      game.homeTeam;
+
+    document.getElementById("awayInput").value =
+      game.awayTeam;
+
+
+    updateTime();
+
+
+    const events =
+      document.getElementById("events");
+
+
+    if (!game.events || game.events.length === 0) {
+
+      events.innerHTML = `
+        <div class="event">
+
+          <div class="icon">⏱️</div>
+
+          <div class="event-content">
+
+            <div class="event-title">
+              Noch keine Ereignisse
+            </div>
+
+            <div class="event-info">
+              Das Spiel ist bereit.
+            </div>
+
+          </div>
+
+        </div>
+      `;
+
+      return;
+
+    }
+
+
+    events.innerHTML =
+      game.events.map(function(event) {
+
+        return `
+          <div class="event">
+
+            <div class="icon">
+              ${event.icon}
+            </div>
+
+            <div class="event-content">
+
+              <div class="event-title">
+                ${event.title}
+              </div>
+
+              <div class="event-info">
+                ${event.info}
+              </div>
+
+            </div>
+
+          </div>
+        `;
+
+      }).join("");
+
+  }
+
+
+  render();
+
+</script>
+
+</body>
+</html>
