@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0b1220">
+
+  <title>Live-Ticker | Hausfußball</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      background: #0b1220;
+      color: white;
+      min-height: 100vh;
+    }
+
+    header {
+      padding: 18px 20px;
+      background: #111a2e;
+      border-bottom: 1px solid #293750;
+    }
+
+    header a {
+      color: #9aa7bd;
+      text-decoration: none;
+      font-size: 15px;
+    }
+
+    main {
+      max-width: 700px;
+      margin: auto;
+      padding: 20px;
+    }
+
+    /* SPIELSTAND */
+
+    .match {
+      background: #151f34;
+      border: 1px solid #293750;
+      border-radius: 20px;
+      padding: 22px;
+      margin-bottom: 18px;
+    }
+
+    .status {
+      display: inline-block;
+      background: #e53935;
+      border-radius: 20px;
+      padding: 6px 11px;
+      font-size: 12px;
+      font-weight: bold;
+    }
+
+    .teams {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      text-align: center;
+      margin: 22px 0;
+      gap: 10px;
+    }
+
+    .team {
+      width: 38%;
+      font-weight: bold;
+      font-size: 16px;
+    }
+
+    .score {
+      font-size: 40px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .minute {
+      color: #9aa7bd;
+      font-size: 13px;
+      margin-top: 4px;
+    }
+
+    /* LIVE-TICKER */
+
+    .ticker {
+      background: #111a2e;
+      border-radius: 18px;
+      padding: 18px;
+    }
+
+    .ticker-title {
+      font-size: 19px;
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+
+    .event {
+      display: flex;
+      gap: 12px;
+      padding: 14px 0;
+      border-bottom: 1px solid #293750;
+    }
+
+    .event:last-child {
+      border-bottom: 0;
+    }
+
+    .icon {
+      font-size: 22px;
+      width: 30px;
+      text-align: center;
+    }
+
+    .event-content {
+      flex: 1;
+    }
+
+    .event-content b {
+      font-size: 15px;
+    }
+
+    .event-content small {
+      display: block;
+      color: #8f9db5;
+      margin-top: 4px;
+    }
+
+    /* ADMIN-BEREICH */
+
+    .admin {
+      background: #151f34;
+      border: 1px solid #293750;
+      border-radius: 20px;
+      padding: 18px;
+      margin-top: 18px;
+    }
+
+    .admin h2 {
+      font-size: 18px;
+      margin-bottom: 14px;
+    }
+
+    .buttons {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    button {
+      border: 0;
+      border-radius: 12px;
+      padding: 14px;
+      background: #2563eb;
+      color: white;
+      font-weight: bold;
+      font-size: 15px;
+      cursor: pointer;
+    }
+
+    button:active {
+      transform: scale(0.97);
+    }
+
+    button.yellow {
+      background: #c89400;
+    }
+
+    button.red {
+      background: #c62828;
+    }
+
+    button.change {
+      background: #475569;
+    }
+
+    button.half {
+      background: #64748b;
+    }
+
+    button.end {
+      background: #16a34a;
+    }
+
+    .reset {
+      margin-top: 10px;
+      width: 100%;
+      padding: 11px;
+      background: transparent;
+      border: 1px solid #3b4a63;
+      color: #9aa7bd;
+      border-radius: 10px;
+    }
+
+    /* STATUS */
+
+    .game-status {
+      text-align: center;
+      color: #9aa7bd;
+      margin-top: 15px;
+      font-size: 14px;
+    }
+
+    footer {
+      text-align: center;
+      color: #64748b;
+      padding: 25px;
+      font-size: 12px;
+    }
+
+    @media (max-width: 450px) {
+      .team {
+        font-size: 14px;
+      }
+
+      .score {
+        font-size: 32px;
+      }
+
+      button {
+        font-size: 14px;
+        padding: 13px 8px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+<header>
+  <a href="index.html">← Hausfußball</a>
+</header>
+
+<main>
+
+  <!-- SPIELSTAND -->
+
+  <div class="match">
+
+    <span class="status" id="status">
+      ● LIVE
+    </span>
+
+    <div class="teams">
+
+      <div class="team">
+        Hausmannschaft
+      </div>
+
+      <div>
+
+        <div class="score" id="score">
+          0 : 0
+        </div>
+
+        <div class="minute" id="minute">
+          1. Halbzeit · 00:00
+        </div>
+
+      </div>
+
+      <div class="team">
+        Gegner
+      </div>
+
+    </div>
+
+  </div>
+
+
+  <!-- LIVE-TICKER -->
+
+  <div class="ticker">
+
+    <div class="ticker-title">
+      📋 Live-Ticker
+    </div>
+
+    <div id="ticker">
+
+      <div class="event">
+
+        <div class="icon">
+          ⏱️
+        </div>
+
+        <div class="event-content">
+
+          <b>Spiel läuft</b>
+
+          <small>
+            Der Live-Ticker ist bereit.
+          </small>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+
+  <!-- ADMIN -->
+
+  <div class="admin">
+
+    <h2>
+      🎛️ Spielereignis hinzufügen
+    </h2>
+
+    <div class="buttons">
+
+      <button onclick="goal(0)">
+        ⚽ Tor Heim
+      </button>
+
+      <button onclick="goal(1)">
+        ⚽ Tor Gast
+      </button>
+
+      <button class="yellow" onclick="card('yellow')">
+        🟨 Gelbe Karte
+      </button>
+
+      <button class="red" onclick="card('red')">
+        🟥 Rote Karte
+      </button>
+
+      <button class="change" onclick="substitution()">
+        🔄 Wechsel
+      </button>
+
+      <button class="half" onclick="halfTime()">
+        ⏸️ Halbzeit
+      </button>
+
+      <button class="end" onclick="endGame()">
+        🏁 Abpfiff
+      </button>
+
+    </div>
+
+    <button class="reset" onclick="resetGame()">
+      ↩️ Spiel zurücksetzen
+    </button>
+
+  </div>
+
+
+  <div class="game-status" id="gameStatus">
+    Spiel läuft
+  </div>
+
+</main>
+
+
+<footer>
+  Hausfußball Live · Version 0.2
+</footer>
+
+
+<script>
+
+  /* =========================
+     SPIELDATEN
+  ========================= */
+
+  let homeScore = 0;
+  let awayScore = 0;
+
+  let events = [];
+
+  let gameRunning = true;
+
+  let currentHalf = 1;
+
+  let seconds = 0;
+
+
+  /* =========================
+     SPIELZEIT
+  ========================= */
+
+  setInterval(function () {
+
+    if (!gameRunning) {
+      return;
+    }
+
+    seconds++;
+
+    updateMinute();
+
+  }, 1000);
+
+
+  function updateMinute() {
+
+    let minutes = Math.floor(seconds / 60);
+
+    let secs = seconds % 60;
+
+    let minuteText =
+      String(minutes).padStart(2, "0")
+      + ":"
+      + String(secs).padStart(2, "0");
+
+    document.getElementById("minute").textContent =
+      currentHalf + ". Halbzeit · " + minuteText;
+
+  }
+
+
+  /* =========================
+     AKTUELLE UHRZEIT
+  ========================= */
+
+  function currentTime() {
+
+    return new Date().toLocaleTimeString(
+      "de-DE",
+      {
+        hour: "2-digit",
+        minute: "2-digit"
+      }
+    );
+
+  }
+
+
+  /* =========================
+     EREIGNIS HINZUFÜGEN
+  ========================= */
+
+  function addEvent(icon, title, description) {
+
+    events.unshift({
+
+      icon: icon,
+
+      title: title,
+
+      description: description,
+
+      time: currentTime()
+
+    });
+
+    renderTicker();
+
+  }
+
+
+  /* =========================
+     TOR
+  ========================= */
+
+  function goal(team) {
+
+    if (!gameRunning) {
+
+      alert("Das Spiel ist bereits beendet.");
+
+      return;
+
+    }
+
+
+    let player = prompt(
+      "Wer hat das Tor geschossen?\n\nSpielername eingeben:"
+    );
+
+
+    if (!player) {
+
+      player = "Unbekannter Spieler";
+
+    }
+
+
+    if (team === 0) {
+
+      homeScore++;
+
+      addEvent(
+        "⚽",
+        "TOR! Hausmannschaft",
+        player + " · " + getMinute()
+      );
+
+    } else {
+
+      awayScore++;
+
+      addEvent(
+        "⚽",
+        "TOR! Gegner",
+        player + " · " + getMinute()
+      );
+
+    }
+
+
+    updateScore();
+
+  }
+
+
+  /* =========================
+     KARTEN
+  ========================= */
+
+  function card(type) {
+
+    if (!gameRunning) {
+
+      alert("Das Spiel ist bereits beendet.");
+
+      return;
+
+    }
+
+
+    let player = prompt(
+      "Spieler für die Karte eingeben:"
+    );
+
+
+    if (!player) {
+
+      return;
+
+    }
+
+
+    if (type === "yellow") {
+
+      addEvent(
+        "🟨",
+        "Gelbe Karte",
+        player + " · " + getMinute()
+      );
+
+    }
+
+
+    if (type === "red") {
+
+      addEvent(
+        "🟥",
+        "Rote Karte",
+        player + " · " + getMinute()
+      );
+
+    }
+
+  }
+
+
+  /* =========================
+     WECHSEL
+  ========================= */
+
+  function substitution() {
+
+    if (!gameRunning) {
+
+      alert("Das Spiel ist bereits beendet.");
+
+      return;
+
+    }
+
+
+    let playerOut = prompt(
+      "Spieler raus:"
+    );
+
+
+    if (!playerOut) {
+
+      return;
+
+    }
+
+
+    let playerIn = prompt(
+      "Spieler rein:"
+    );
+
+
+    if (!playerIn) {
+
+      return;
+
+    }
+
+
+    addEvent(
+      "🔄",
+      "Auswechslung",
+      playerOut + " → " + playerIn + " · " + getMinute()
+    );
+
+  }
+
+
+  /* =========================
+     HALBZEIT
+  ========================= */
+
+  function halfTime() {
+
+    if (!gameRunning) {
+
+      return;
+
+    }
+
+
+    addEvent(
+      "⏸️",
+      "HALBZEIT",
+      "Spielstand " + homeScore + " : " + awayScore
+    );
+
+
+    currentHalf = 2;
+
+    seconds = 0;
+
+
+    document.getElementById("minute").textContent =
+      "2. Halbzeit · 00:00";
+
+
+    document.getElementById("gameStatus").textContent =
+      "2. Halbzeit";
+
+  }
+
+
+  /* =========================
+     ABPFIFF
+  ========================= */
+
+  function endGame() {
+
+    if (!gameRunning) {
+
+      return;
+
+    }
+
+
+    gameRunning = false;
+
+
+    addEvent(
+      "🏁",
+      "ABPFIFF",
+      "Endstand " + homeScore + " : " + awayScore
+    );
+
+
+    document.getElementById("status").textContent =
+      "● ENDE";
+
+
+    document.getElementById("status").style.background =
+      "#16a34a";
+
+
+    document.getElementById("gameStatus").textContent =
+      "Spiel beendet";
+
+  }
+
+
+  /* =========================
+     SPIEL ZURÜCKSETZEN
+  ========================= */
+
+  function resetGame() {
+
+    if (
+      !confirm(
+        "Spiel wirklich komplett zurücksetzen?"
+      )
+    ) {
+
+      return;
+
+    }
+
+
+    homeScore = 0;
+
+    awayScore = 0;
+
+    events = [];
+
+    gameRunning = true;
+
+    currentHalf = 1;
+
+    seconds = 0;
+
+
+    document.getElementById("status").textContent =
+      "● LIVE";
+
+
+    document.getElementById("status").style.background =
+      "#e53935";
+
+
+    document.getElementById("gameStatus").textContent =
+      "Spiel läuft";
+
+
+    updateScore();
+
+    updateMinute();
+
+    renderTicker();
+
+  }
+
+
+  /* =========================
+     SPIELSTAND AKTUALISIEREN
+  ========================= */
+
+  function updateScore() {
+
+    document.getElementById("score").textContent =
+      homeScore + " : " + awayScore;
+
+  }
+
+
+  /* =========================
+     MINUTE
+  ========================= */
+
+  function getMinute() {
+
+    let minutes = Math.floor(seconds / 60);
+
+    let secs = seconds % 60;
+
+    return (
+      String(minutes).padStart(2, "0")
+      + ":"
+      + String(secs).padStart(2, "0")
+    );
+
+  }
+
+
+  /* =========================
+     TICKER RENDERN
+  ========================= */
+
+  function renderTicker() {
+
+    const ticker =
+      document.getElementById("ticker");
+
+
+    if (events.length === 0) {
+
+      ticker.innerHTML = `
+        <div class="event">
+
+          <div class="icon">
+            ⏱️
+          </div>
+
+          <div class="event-content">
+
+            <b>Noch keine Ereignisse</b>
+
+            <small>
+              Das Spiel ist bereit.
+            </small>
+
+          </div>
+
+        </div>
+      `;
+
+      return;
+
+    }
+
+
+    ticker.innerHTML =
+      events.map(function(event) {
+
+        return `
+
+          <div class="event">
+
+            <div class="icon">
+              ${event.icon}
+            </div>
+
+            <div class="event-content">
+
+              <b>
+                ${event.title}
+              </b>
+
+              <small>
+                ${event.description}
+                · ${event.time}
+              </small>
+
+            </div>
+
+          </div>
+
+        `;
+
+      }).join("");
+
+  }
+
+
+  /* =========================
+     START
+  ========================= */
+
+  updateScore();
+
+  updateMinute();
+
+  renderTicker();
+
+</script>
+
+</body>
+</html>
