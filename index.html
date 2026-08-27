@@ -1,0 +1,1237 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Hausfußball</title>
+
+<meta name="theme-color" content="#07111f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+<link rel="manifest" href="./manifest.json">
+
+<style>
+*{box-sizing:border-box}
+
+body{
+  margin:0;
+  background:#07111f;
+  color:white;
+  font-family:Arial,sans-serif;
+}
+
+.app{
+  max-width:760px;
+  margin:auto;
+  padding-bottom:40px;
+}
+
+header{
+  background:#0e1b2d;
+  padding:20px;
+  border-bottom:1px solid #223954;
+}
+
+h1{
+  margin:0;
+  font-size:25px;
+}
+
+.sub{
+  color:#91a4bc;
+  font-size:12px;
+  margin-top:4px;
+}
+
+nav{
+  position:sticky;
+  top:0;
+  z-index:10;
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:6px;
+  padding:8px;
+  background:#07111f;
+}
+
+nav button,
+button{
+  border:0;
+  border-radius:12px;
+  padding:12px;
+  font-weight:bold;
+  color:white;
+  background:#2878ff;
+}
+
+nav button{
+  background:#12243a;
+  font-size:11px;
+}
+
+nav button.active{
+  background:#2878ff;
+}
+
+.page{
+  display:none;
+  padding:18px;
+}
+
+.page.active{
+  display:block;
+}
+
+.card{
+  background:#0e1b2d;
+  border:1px solid #223954;
+  border-radius:18px;
+  padding:16px;
+  margin-bottom:14px;
+}
+
+.score{
+  text-align:center;
+  font-size:45px;
+  font-weight:900;
+  margin:12px 0;
+}
+
+.teams{
+  display:grid;
+  grid-template-columns:1fr auto 1fr;
+  align-items:center;
+  text-align:center;
+  gap:10px;
+}
+
+.team{
+  font-weight:900;
+}
+
+.time{
+  color:#91a4bc;
+  text-align:center;
+  font-size:12px;
+}
+
+.live{
+  display:inline-block;
+  background:#e53935;
+  border-radius:20px;
+  padding:6px 10px;
+  font-size:10px;
+  font-weight:bold;
+}
+
+.events{
+  margin-top:12px;
+}
+
+.event{
+  padding:12px 0;
+  border-bottom:1px solid #223954;
+}
+
+.event:last-child{
+  border-bottom:0;
+}
+
+.event-title{
+  font-weight:bold;
+}
+
+.event-info{
+  color:#91a4bc;
+  font-size:11px;
+  margin-top:3px;
+}
+
+.grid{
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  gap:8px;
+}
+
+.grid button{
+  background:#12243a;
+  padding:16px 8px;
+}
+
+input,
+textarea{
+  width:100%;
+  background:#091525;
+  color:white;
+  border:1px solid #223954;
+  border-radius:10px;
+  padding:12px;
+  margin:5px 0 10px;
+}
+
+textarea{
+  min-height:100px;
+}
+
+.green{
+  background:#16a05d !important;
+}
+
+.red{
+  background:#e53935 !important;
+}
+
+.muted{
+  color:#91a4bc;
+  font-size:12px;
+}
+
+.news{
+  border-left:4px solid #2878ff;
+}
+
+.news-title{
+  font-size:17px;
+  font-weight:bold;
+}
+
+.news-text{
+  color:#bdc9d9;
+  margin-top:6px;
+  line-height:1.4;
+}
+</style>
+</head>
+
+<body>
+
+<div class="app">
+
+<header>
+  <h1>⚽ Hausfußball</h1>
+  <div class="sub">
+    Live-Ticker · Ergebnisse · Push-Nachrichten
+  </div>
+</header>
+
+<nav>
+  <button id="nav-home" class="active" onclick="showPage('home')">
+    🏠 Home
+  </button>
+
+  <button id="nav-live" onclick="showPage('live')">
+    🔴 Live
+  </button>
+
+  <button id="nav-news" onclick="showPage('news')">
+    📰 News
+  </button>
+
+  <button id="nav-admin" onclick="showPage('admin')">
+    ⚙️ Admin
+  </button>
+</nav>
+
+<section id="home" class="page active">
+
+  <div class="card">
+
+    <div class="live">🔴 LIVE</div>
+
+    <div class="teams">
+
+      <div class="team" id="homeTeam">
+        Hausmannschaft
+      </div>
+
+      <div>
+        <div class="score" id="score">
+          0 : 0
+        </div>
+
+        <div class="time" id="time">
+          1. Halbzeit · 00:00
+        </div>
+      </div>
+
+      <div class="team" id="awayTeam">
+        Gegner
+      </div>
+
+    </div>
+
+  </div>
+
+  <div class="card">
+
+    <b>🔔 Push-Nachrichten</b>
+
+    <p class="muted">
+      Erhalte Tore, Karten, Fouls und wichtige
+      Spielereignisse auch außerhalb der App.
+    </p>
+
+    <button
+      id="pushButton"
+      onclick="enablePush()"
+    >
+      🔔 Push aktivieren
+    </button>
+
+  </div>
+
+  <div class="card">
+
+    <b>📋 Letzte Ereignisse</b>
+
+    <div id="homeEvents" class="events"></div>
+
+  </div>
+
+</section>
+
+<section id="live" class="page">
+
+  <div class="card">
+
+    <div class="live">🔴 LIVE</div>
+
+    <div class="teams">
+
+      <div class="team" id="liveHome">
+        Hausmannschaft
+      </div>
+
+      <div>
+        <div class="score" id="liveScore">
+          0 : 0
+        </div>
+
+        <div class="time" id="liveTime">
+          1. Halbzeit · 00:00
+        </div>
+      </div>
+
+      <div class="team" id="liveAway">
+        Gegner
+      </div>
+
+    </div>
+
+  </div>
+
+  <div class="card">
+
+    <b>📋 Live-Ticker</b>
+
+    <div id="events" class="events"></div>
+
+  </div>
+
+</section>
+
+<section id="news" class="page">
+
+  <h2>📰 News</h2>
+
+  <div id="newsList"></div>
+
+</section>
+
+<section id="admin" class="page">
+
+  <h2>⚙️ Spielleitung</h2>
+
+  <div class="card">
+
+    <label>Heimteam</label>
+
+    <input
+      id="homeInput"
+      value="Hausmannschaft"
+    >
+
+    <label>Auswärtsteam</label>
+
+    <input
+      id="awayInput"
+      value="Gegner"
+    >
+
+    <button onclick="saveTeams()">
+      💾 Teams speichern
+    </button>
+
+  </div>
+
+  <div class="card">
+
+    <b>⚡ Spielereignis</b>
+
+    <div class="grid">
+
+      <button onclick="kickOff()">
+        ▶️ Anpfiff
+      </button>
+
+      <button onclick="addGoal(0)">
+        ⚽ Tor Heim
+      </button>
+
+      <button onclick="addGoal(1)">
+        ⚽ Tor Gast
+      </button>
+
+      <button onclick="addFoul()">
+        🛑 Foul
+      </button>
+
+      <button onclick="addPenalty()">
+        🟢 Elfmeter
+      </button>
+
+      <button onclick="addFreeKick()">
+        🎯 Freistoß
+      </button>
+
+      <button onclick="addCorner()">
+        🚩 Ecke
+      </button>
+
+      <button onclick="addCard('yellow')">
+        🟨 Gelb
+      </button>
+
+      <button onclick="addCard('red')">
+        🟥 Rot
+      </button>
+
+      <button onclick="addSubstitution()">
+        🔄 Wechsel
+      </button>
+
+      <button onclick="halfTime()">
+        ⏸️ Halbzeit
+      </button>
+
+      <button onclick="endGame()">
+        🏁 Abpfiff
+      </button>
+
+    </div>
+
+  </div>
+
+  <div class="card">
+
+    <b>📰 News erstellen</b>
+
+    <input
+      id="newsTitle"
+      placeholder="Überschrift"
+    >
+
+    <textarea
+      id="newsText"
+      placeholder="Nachricht..."
+    ></textarea>
+
+    <button onclick="publishNews()">
+      📰 Veröffentlichen
+    </button>
+
+  </div>
+
+</section>
+
+</div>
+
+<!-- OFFIZIELLES LITEPUSH SDK -->
+
+<script
+  src="https://litepush.dev/sdk.js"
+  data-project="prj_01M10ZZMB8FQ0P9199F3YTSQTK"
+  data-vapid-key="BGdRmdaHmTwhqfNgmG_EHRGl_o_giq1Gg79eE-vVV5D0fuKsN4ilelPMibfezCxLcfvXTP-Vede3iJfXlgX6hvQ"
+  async
+></script>
+
+<script>
+
+/* =========================
+   LITEPUSH
+========================= */
+
+function enablePush(){
+
+  if(!window.litepush){
+
+    alert(
+      "LitePush wird noch geladen. Bitte kurz warten und erneut versuchen."
+    );
+
+    return;
+  }
+
+  const button =
+    document.getElementById("pushButton");
+
+  button.disabled = true;
+  button.textContent =
+    "🔄 Push wird aktiviert...";
+
+  /*
+   * Wichtig:
+   * Auf iPhone muss die App vom
+   * Home-Bildschirm gestartet werden.
+   */
+
+  if(!litepush.canSubscribe()){
+
+    button.disabled = false;
+    button.textContent =
+      "🔔 Push aktivieren";
+
+    alert(
+      "Push ist hier nicht verfügbar. " +
+      "Auf dem iPhone muss Hausfußball zuerst " +
+      "zum Home-Bildschirm hinzugefügt und " +
+      "anschließend von dort geöffnet werden."
+    );
+
+    return;
+  }
+
+  litepush.subscribe()
+    .then(result => {
+
+      if(!result){
+
+        throw new Error(
+          "Die Benachrichtigungsberechtigung wurde nicht erteilt."
+        );
+
+      }
+
+      console.log(
+        "[LitePush] erfolgreich registriert:",
+        result.id
+      );
+
+      button.disabled = false;
+      button.textContent =
+        "🔔 Push ist aktiviert";
+
+      button.classList.add("green");
+
+      localStorage.setItem(
+        "hausfussball_push",
+        "1"
+      );
+
+      alert(
+        "🔔 Push wurde erfolgreich aktiviert!"
+      );
+
+    })
+
+    .catch(error => {
+
+      console.error(
+        "[LitePush]",
+        error
+      );
+
+      button.disabled = false;
+
+      button.textContent =
+        "🔔 Push aktivieren";
+
+      alert(
+        "Push konnte nicht aktiviert werden:\n\n" +
+        error.message
+      );
+
+    });
+
+}
+
+
+/*
+ * LitePush kann async geladen werden.
+ * Diese Queue wartet deshalb auf das SDK.
+ */
+
+(window.litepushQ =
+  window.litepushQ || [])
+.push(lp => {
+
+  console.log(
+    "LitePush SDK bereit:",
+    lp.version
+  );
+
+  const button =
+    document.getElementById("pushButton");
+
+  if(
+    localStorage.getItem(
+      "hausfussball_push"
+    ) === "1" &&
+    lp.isSubscribed()
+  ){
+
+    button.textContent =
+      "🔔 Push ist aktiviert";
+
+    button.classList.add("green");
+
+  }
+
+});
+
+
+/* =========================
+   APP
+========================= */
+
+let game = {
+
+  homeTeam:"Hausmannschaft",
+
+  awayTeam:"Gegner",
+
+  homeScore:0,
+
+  awayScore:0,
+
+  half:1,
+
+  seconds:0,
+
+  running:false,
+
+  events:[],
+
+  news:[]
+
+};
+
+
+/* =========================
+   NAVIGATION
+========================= */
+
+function showPage(page){
+
+  document
+    .querySelectorAll(".page")
+    .forEach(p =>
+      p.classList.remove("active")
+    );
+
+  document
+    .getElementById(page)
+    .classList.add("active");
+
+  document
+    .querySelectorAll("nav button")
+    .forEach(b =>
+      b.classList.remove("active")
+    );
+
+  const nav =
+    document.getElementById(
+      "nav-" + page
+    );
+
+  if(nav)
+    nav.classList.add("active");
+
+}
+
+
+/* =========================
+   TIMER
+========================= */
+
+setInterval(() => {
+
+  if(!game.running)
+    return;
+
+  game.seconds++;
+
+  render();
+
+},1000);
+
+
+/* =========================
+   EVENT
+========================= */
+
+function addEvent(
+  icon,
+  title,
+  info
+){
+
+  game.events.unshift({
+
+    icon:icon,
+
+    title:title,
+
+    info:info,
+
+    time:Date.now()
+
+  });
+
+}
+
+
+/* =========================
+   ANPFIFF
+========================= */
+
+function kickOff(){
+
+  game.running = true;
+  game.half = 1;
+  game.seconds = 0;
+
+  addEvent(
+    "▶️",
+    "Anpfiff",
+    "Das Spiel beginnt."
+  );
+
+  render();
+
+}
+
+
+/* =========================
+   TOR
+========================= */
+
+function addGoal(team){
+
+  const teamName =
+    team === 0
+      ? game.homeTeam
+      : game.awayTeam;
+
+  const scorer =
+    prompt(
+      "Torschütze:"
+    );
+
+  if(!scorer)
+    return;
+
+  if(team === 0)
+    game.homeScore++;
+  else
+    game.awayScore++;
+
+  addEvent(
+    "⚽",
+    "TOOOR – " + teamName,
+    scorer +
+    " · " +
+    currentMinute()
+  );
+
+  render();
+
+}
+
+
+/* =========================
+   FOUL
+========================= */
+
+function addFoul(){
+
+  const player =
+    prompt("Wer hat das Foul begangen?");
+
+  if(!player)
+    return;
+
+  addEvent(
+    "🛑",
+    "Foul",
+    player +
+    " · " +
+    currentMinute()
+  );
+
+  render();
+
+}
+
+
+/* =========================
+   ELFMETER
+========================= */
+
+function addPenalty(){
+
+  const team =
+    prompt(
+      "Elfmeter für:\n1 = Heim\n2 = Gast"
+    );
+
+  if(!team)
+    return;
+
+  const name =
+    team === "2"
+      ? game.awayTeam
+      : game.homeTeam;
+
+  addEvent(
+    "🟢",
+    "Elfmeter",
+    name +
+    " · " +
+    currentMinute()
+  );
+
+  render();
+
+}
+
+
+/* =========================
+   FREISTOSS
+========================= */
+
+function addFreeKick(){
+
+  const team =
+    prompt(
+      "Freistoß für:\n1 = Heim\n2 = Gast"
+    );
+
+  if(!team)
+    return;
+
+  const name =
+    team === "2"
+      ? game.awayTeam
+      : game.homeTeam;
+
+  addEvent(
+    "🎯",
+    "Freistoß",
+    name +
+    " · " +
+    currentMinute()
+  );
+
+  render();
+
+}
+
+
+/* =========================
+   ECKE
+========================= */
+
+function addCorner(){
+
+  const team =
+    prompt(
+      "Ecke für:\n1 = Heim\n2 = Gast"
+    );
+
+  if(!team)
+    return;
+
+  const name =
+    team === "2"
+      ? game.awayTeam
+      : game.homeTeam;
+
+  addEvent(
+    "🚩",
+    "Ecke",
+    name +
+    " · " +
+    currentMinute()
+  );
+
+  render();
+
+}
+
+
+/* =========================
+   KARTEN
+========================= */
+
+function addCard(type){
+
+  const player =
+    prompt("Spieler:");
+
+  if(!player)
+    return;
+
+  const icon =
+    type === "yellow"
+      ? "🟨"
+      : "🟥";
+
+  const title =
+    type === "yellow"
+      ? "Gelbe Karte"
+      : "Rote Karte";
+
+  addEvent(
+    icon,
+    title,
+    player +
+    " · " +
+    currentMinute()
+  );
+
+  render();
+
+}
+
+
+/* =========================
+   WECHSEL
+========================= */
+
+function addSubstitution(){
+
+  const out =
+    prompt("Spieler raus:");
+
+  if(!out)
+    return;
+
+  const incoming =
+    prompt("Spieler rein:");
+
+  if(!incoming)
+    return;
+
+  addEvent(
+    "🔄",
+    "Wechsel",
+    out +
+    " → " +
+    incoming +
+    " · " +
+    currentMinute()
+  );
+
+  render();
+
+}
+
+
+/* =========================
+   HALBZEIT
+========================= */
+
+function halfTime(){
+
+  game.running = false;
+  game.half = 2;
+  game.seconds = 0;
+
+  addEvent(
+    "⏸️",
+    "Halbzeit",
+    game.homeScore +
+    " : " +
+    game.awayScore
+  );
+
+  render();
+
+}
+
+
+/* =========================
+   ABPFIFF
+========================= */
+
+function endGame(){
+
+  game.running = false;
+
+  addEvent(
+    "🏁",
+    "Abpfiff",
+    "Endstand " +
+    game.homeScore +
+    " : " +
+    game.awayScore
+  );
+
+  render();
+
+}
+
+
+/* =========================
+   TEAMS
+========================= */
+
+function saveTeams(){
+
+  game.homeTeam =
+    document
+      .getElementById("homeInput")
+      .value ||
+    "Hausmannschaft";
+
+  game.awayTeam =
+    document
+      .getElementById("awayInput")
+      .value ||
+    "Gegner";
+
+  render();
+
+}
+
+
+/* =========================
+   NEWS
+========================= */
+
+function publishNews(){
+
+  const title =
+    document
+      .getElementById("newsTitle")
+      .value
+      .trim();
+
+  const text =
+    document
+      .getElementById("newsText")
+      .value
+      .trim();
+
+  if(!title || !text){
+
+    alert(
+      "Bitte Überschrift und Text eingeben."
+    );
+
+    return;
+
+  }
+
+  game.news.unshift({
+
+    title:title,
+
+    text:text,
+
+    time:new Date()
+      .toLocaleTimeString(
+        "de-DE",
+        {
+          hour:"2-digit",
+          minute:"2-digit"
+        }
+      )
+
+  });
+
+  document
+    .getElementById("newsTitle")
+    .value = "";
+
+  document
+    .getElementById("newsText")
+    .value = "";
+
+  render();
+
+}
+
+
+/* =========================
+   ZEIT
+========================= */
+
+function currentMinute(){
+
+  const min =
+    Math.floor(
+      game.seconds / 60
+    );
+
+  const sec =
+    String(
+      game.seconds % 60
+    ).padStart(2,"0");
+
+  return (
+    min +
+    ":" +
+    sec
+  );
+
+}
+
+
+/* =========================
+   HTML ESCAPING
+========================= */
+
+function safe(text){
+
+  return String(text)
+    .replaceAll("&","&amp;")
+    .replaceAll("<","&lt;")
+    .replaceAll(">","&gt;")
+    .replaceAll('"',"&quot;")
+    .replaceAll("'","&#039;");
+
+}
+
+
+/* =========================
+   RENDER
+========================= */
+
+function render(){
+
+  const score =
+    game.homeScore +
+    " : " +
+    game.awayScore;
+
+  document
+    .getElementById("homeTeam")
+    .textContent =
+    game.homeTeam;
+
+  document
+    .getElementById("awayTeam")
+    .textContent =
+    game.awayTeam;
+
+  document
+    .getElementById("liveHome")
+    .textContent =
+    game.homeTeam;
+
+  document
+    .getElementById("liveAway")
+    .textContent =
+    game.awayTeam;
+
+  document
+    .getElementById("score")
+    .textContent =
+    score;
+
+  document
+    .getElementById("liveScore")
+    .textContent =
+    score;
+
+  const time =
+    game.half +
+    ". Halbzeit · " +
+    currentMinute();
+
+  document
+    .getElementById("time")
+    .textContent =
+    time;
+
+  document
+    .getElementById("liveTime")
+    .textContent =
+    time;
+
+
+  const eventsHTML =
+    game.events
+      .map(e => `
+
+        <div class="event">
+
+          <div>
+            ${safe(e.icon)}
+            <b>
+              ${safe(e.title)}
+            </b>
+          </div>
+
+          <div class="event-info">
+            ${safe(e.info)}
+          </div>
+
+        </div>
+
+      `)
+      .join("");
+
+
+  document
+    .getElementById("events")
+    .innerHTML =
+    eventsHTML ||
+    '<div class="muted">Noch keine Ereignisse.</div>';
+
+  document
+    .getElementById("homeEvents")
+    .innerHTML =
+    eventsHTML ||
+    '<div class="muted">Noch keine Ereignisse.</div>';
+
+
+  document
+    .getElementById("newsList")
+    .innerHTML =
+    game.news
+      .map(n => `
+
+        <div class="card news">
+
+          <div class="news-title">
+            ${safe(n.title)}
+          </div>
+
+          <div class="news-text">
+            ${safe(n.text)}
+          </div>
+
+          <div class="muted">
+            ${safe(n.time)}
+          </div>
+
+        </div>
+
+      `)
+      .join("") ||
+      '<div class="muted">Noch keine News.</div>';
+
+}
+
+
+render();
+
+</script>
+
+</body>
+</html>
