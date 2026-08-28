@@ -1,0 +1,13 @@
+name = "hausfussball-live"
+main = "worker.js"
+compatibility_date = "2026-08-28"
+workers_dev = true
+
+[[d1_databases]]
+binding = "DB"
+database_name = "hausfussball"
+database_id = "567ded87-29ba-4014-852f-c492ebb28395"
+
+[assets]
+directory = "."
+binding = "ASSETS"
