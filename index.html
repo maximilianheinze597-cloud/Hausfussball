@@ -2092,7 +2092,11 @@ function playRefereeWhistle(kind){
     playSyntheticWhistle(kind);
   };
   const fallbackTimer = window.setTimeout(() => {
-    if(audio.paused && audio.currentTime === 0) fallback();
+    if(audio.paused && audio.currentTime === 0){
+      audio.pause();
+      audio.src = "";
+      fallback();
+    }
   }, 1400);
   audio.addEventListener("playing", () => window.clearTimeout(fallbackTimer), {once:true});
   audio.addEventListener("error", () => {
