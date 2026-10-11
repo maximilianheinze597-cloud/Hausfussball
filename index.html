@@ -23,15 +23,9 @@
 <link rel="icon" type="image/svg+xml" href="./icon-192.svg">
 <meta name="mobile-web-app-capable" content="yes">
 <title>Hausfussball</title>
-<!-- =====================================================
-     LITEPUSH SDK
-===================================================== -->
-<script
-  src="https://litepush.dev/sdk.js"
-  data-project="prj_01M10ZZMB8FQ0P9199F3YTSQTK"
-  data-vapid-key="BGdRmdaHmTwhqfNgmG_EHRGl_o_giq1Gg79eE-vVV5D0fuKsN4ilelPMibfezCxLcfvXTP-Vede3iJfXlgX6hvQ"
-  async>
-</script>
+<script src="./firebase-config.js"></script>
+<script src="https://www.gstatic.com/firebasejs/11.10.0/firebase-app-compat.js" defer></script>
+<script src="https://www.gstatic.com/firebasejs/11.10.0/firebase-messaging-compat.js" defer></script>
 <style>
 *{
   box-sizing:border-box;
@@ -1153,232 +1147,91 @@ select:focus{
 const API_BASE =
   "https://hausfussball-live.maximilianheinze597.workers.dev";
 /* =====================================================
-   LITEPUSH
+   FIREBASE CLOUD MESSAGING (FCM)
 ===================================================== */
-const LITEPUSH_PROJECT =
-  "prj_01M10ZZMB8FQ0P9199F3YTSQTK";
-const LITEPUSH_VAPID =
-  "BGdRmdaHmTwhqfNgmG_EHRGl_o_giq1Gg79eE-vVV5D0fuKsN4ilelPMibfezCxLcfvXTP-Vede3iJfXlgX6hvQ";
-/*
- * Eigene Geräte-ID erzeugen.
- *
- * Dadurch bekommt jedes Gerät eine eigene
- * LitePush external_id.
- */
-function getPushUserId(){
-  let id =
-    localStorage.getItem(
-      "hausfussball_push_user_id"
-    );
-  if(!id){
-    id =
-      "hf_" +
-      Date.now() +
-      "_" +
-      Math.random()
-        .toString(36)
-        .slice(2,10);
-    localStorage.setItem(
-      "hausfussball_push_user_id",
-      id
-    );
-  }
-  return id;
-}
-/* =====================================================
-   PUSH STATUS
-===================================================== */
-function setPushStatus(
-  message,
-  type=""
-){
-  const element =
-    document.getElementById(
-      "pushStatus"
-    );
+function setPushStatus(message,type=""){
+  const element=document.getElementById("pushStatus");
   if(!element) return;
-  element.textContent =
-    message;
-  element.className =
-    "push-status " +
-    type;
+  element.textContent=message;
+  element.className="push-status "+type;
 }
-/* =====================================================
-   PUSH BUTTON
-===================================================== */
+function firebaseConfigReady(){
+  const config=window.HAUSFUSSBALL_FIREBASE_CONFIG;
+  return !!(config && config.apiKey && config.projectId &&
+    config.messagingSenderId && config.appId &&
+    !Object.values(config).some(value=>String(value).includes("HIER_EINTRAGEN")) &&
+    window.HAUSFUSSBALL_FCM_VAPID_KEY &&
+    !String(window.HAUSFUSSBALL_FCM_VAPID_KEY).includes("HIER_EINTRAGEN"));
+}
 async function activatePush(){
-  const button =
-    document.getElementById(
-      "pushButton"
-    );
+  const button=document.getElementById("pushButton");
   if(!button) return;
-  /*
-   * Browser unterstützt Push grundsätzlich nicht
-   */
-  if(
-    !("Notification" in window) ||
-    !("serviceWorker" in navigator) ||
-    !("PushManager" in window)
-  ){
-    setPushStatus(
-      "❌ Push wird auf diesem Gerät/Browser nicht unterstützt.",
-      "error"
-    );
-    toast(
-      "❌ Push wird nicht unterstützt."
-    );
+  if(!firebaseConfigReady()){
+    setPushStatus("⚙️ Firebase ist noch nicht konfiguriert. Siehe SETUP_CLOUD.md im GitHub-Repository.","warning");
+    toast("⚙️ Firebase-Konfiguration fehlt noch.");
     return;
   }
-  /*
-   * LitePush SDK prüfen
-   */
-  if(
-    typeof window.litepush === "undefined" ||
-    typeof window.litepush.subscribe !== "function"
-  ){
-    setPushStatus(
-      "🔄 LitePush wird noch geladen. Bitte kurz warten.",
-      "warning"
-    );
-    toast(
-      "🔄 LitePush wird noch geladen..."
-    );
+  if(!("Notification" in window) || !("serviceWorker" in navigator) || !("PushManager" in window)){
+    setPushStatus("❌ Push wird von diesem Browser nicht unterstützt.","error");
     return;
   }
-  /*
-   * iOS / Home-Screen-Prüfung
-   */
-  if(
-    typeof window.litepush.canSubscribe === "function" &&
-    !window.litepush.canSubscribe()
-  ){
-    setPushStatus(
-      "📱 Auf dem iPhone zuerst Hausfussball zum Home-Bildschirm hinzufügen und die App von dort öffnen.",
-      "warning"
-    );
-    toast(
-      "📱 Bitte Hausfussball zum Home-Bildschirm hinzufügen."
-    );
+  if(/iPhone|iPad|iPod/.test(navigator.userAgent) &&
+     !window.matchMedia("(display-mode: standalone)").matches &&
+     !window.navigator.standalone){
+    setPushStatus("📱 Auf dem iPhone zuerst zum Home-Bildschirm hinzufügen und von dort öffnen.","warning");
+    return;
+  }
+  if(!window.firebase || !firebase.messaging){
+    setPushStatus("🔄 Firebase wird geladen. Bitte kurz warten und erneut versuchen.","warning");
     return;
   }
   try{
-    button.disabled = true;
-    button.textContent =
-      "🔄 Push wird aktiviert...";
-    setPushStatus(
-      "Bitte die Benachrichtigungen erlauben.",
-      "warning"
-    );
-    /*
-     * LitePush abonnieren
-     */
-    await window.litepush.subscribe({
-      userId:
-        getPushUserId()
+    button.disabled=true;
+    button.textContent="🔄 Push wird aktiviert...";
+    const permission=await Notification.requestPermission();
+    if(permission!=="granted") throw new Error("Benachrichtigungen wurden nicht erlaubt.");
+    if(!firebase.apps.length) firebase.initializeApp(window.HAUSFUSSBALL_FIREBASE_CONFIG);
+    const registration=await navigator.serviceWorker.register("./firebase-messaging-sw.js");
+    const messaging=firebase.messaging();
+    const token=await messaging.getToken({
+      vapidKey:window.HAUSFUSSBALL_FCM_VAPID_KEY,
+      serviceWorkerRegistration:registration
     });
-    /*
-     * Erfolgreich
-     */
-    button.textContent =
-      "✅ Push aktiviert";
-    button.disabled = true;
-    setPushStatus(
-      "✅ Push-Benachrichtigungen sind aktiviert.",
-      "success"
-    );
-    localStorage.setItem(
-      "hausfussball_push_enabled",
-      "true"
-    );
-    toast(
-      "✅ Push aktiviert!"
-    );
+    if(!token) throw new Error("Firebase hat kein Geräte-Token zurückgegeben.");
+    const response=await fetch(API_BASE+"/api/push/subscribe",{
+      method:"POST",
+      headers:{"Content-Type":"application/json","Accept":"application/json"},
+      body:JSON.stringify({token})
+    });
+    const result=await response.json();
+    if(!response.ok || !result.ok) throw new Error(result.error||"Token konnte nicht gespeichert werden.");
+    localStorage.setItem("hausfussball_push_enabled","true");
+    button.textContent="✅ Push aktiviert";
+    setPushStatus("✅ Dieses Gerät ist für Firebase-Push registriert.","success");
+    toast("✅ Firebase-Push aktiviert!");
   }catch(error){
-    console.error(
-      "[Hausfussball] LitePush:",
-      error
-    );
-    button.disabled = false;
-    button.textContent =
-      "🔔 Push aktivieren";
-    /*
-     * Wenn der Benutzer die Berechtigung
-     * bereits abgelehnt hat
-     */
-    if(
-      "Notification" in window &&
-      Notification.permission === "denied"
-    ){
-      setPushStatus(
-        "⚠️ Benachrichtigungen sind im Browser blockiert. Bitte in den Einstellungen erlauben.",
-        "warning"
-      );
-      toast(
-        "⚠️ Benachrichtigungen sind blockiert."
-      );
-      return;
-    }
-    setPushStatus(
-      "❌ Push konnte nicht aktiviert werden. Bitte erneut versuchen.",
-      "error"
-    );
-    toast(
-      "❌ Push konnte nicht aktiviert werden."
-    );
+    console.error("[Hausfußball] Firebase Push:",error);
+    button.disabled=false;
+    button.textContent="🔔 Push aktivieren";
+    localStorage.removeItem("hausfussball_push_enabled");
+    setPushStatus("❌ "+(error.message||"Push konnte nicht aktiviert werden."),"error");
   }
 }
-/* =====================================================
-   PUSH STATUS BEIM START PRÜFEN
-===================================================== */
 function checkPushStatus(){
-  const button =
-    document.getElementById(
-      "pushButton"
-    );
+  const button=document.getElementById("pushButton");
   if(!button) return;
-  /*
-   * Bereits lokal aktiviert
-   */
-  if(
-    localStorage.getItem(
-      "hausfussball_push_enabled"
-    ) === "true"
-  ){
-    button.textContent =
-      "✅ Push aktiviert";
-    button.disabled = true;
-    setPushStatus(
-      "✅ Push-Benachrichtigungen sind aktiviert.",
-      "success"
-    );
+  if(!firebaseConfigReady()){
+    setPushStatus("⚙️ Firebase-Konfiguration muss noch eingetragen werden.","warning");
     return;
   }
-  /*
-   * Browser-Berechtigung bereits erteilt
-   */
-  if(
-    "Notification" in window &&
-    Notification.permission === "granted"
-  ){
-    button.textContent =
-      "🔔 Push aktivieren";
-    setPushStatus(
-      "Benachrichtigungen sind bereits erlaubt. Tippe zum Verbinden mit LitePush.",
-      "success"
-    );
+  if(localStorage.getItem("hausfussball_push_enabled")==="true" &&
+     "Notification" in window && Notification.permission==="granted"){
+    button.textContent="✅ Push aktiviert";
+    setPushStatus("Dieses Gerät wurde für Push registriert. Falls es nicht funktioniert, bitte erneut aktivieren.","success");
     return;
   }
-  /*
-   * Berechtigung verweigert
-   */
-  if(
-    "Notification" in window &&
-    Notification.permission === "denied"
-  ){
-    setPushStatus(
-      "⚠️ Benachrichtigungen sind momentan blockiert.",
-      "warning"
-    );
+  if("Notification" in window && Notification.permission==="denied"){
+    setPushStatus("⚠️ Benachrichtigungen sind in den Geräteeinstellungen blockiert.","warning");
   }
 }
 /* =====================================================
@@ -2867,6 +2720,9 @@ setInterval(
   loadFromServer,
   3000
 );
+if("serviceWorker" in navigator){
+  window.addEventListener("load",()=>navigator.serviceWorker.register("./firebase-messaging-sw.js").catch(error=>console.warn("[Hausfußball] Service Worker:",error)));
+}
 document.addEventListener(
   "visibilitychange",
   () => {
