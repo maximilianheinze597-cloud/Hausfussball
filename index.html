@@ -19,6 +19,9 @@
   name="apple-mobile-web-app-title"
   content="Hausfussball"
 >
+<link rel="manifest" href="./manifest.json">
+<link rel="icon" type="image/svg+xml" href="./icon-192.svg">
+<meta name="mobile-web-app-capable" content="yes">
 <title>Hausfussball</title>
 <!-- =====================================================
      LITEPUSH SDK
@@ -554,6 +557,32 @@ select:focus{
 .server-status.offline{
   color:var(--red);
 }
+
+/* SCHIEDSRICHTER-PANEL */
+.referee-card{border:1px solid #3a4658;background:linear-gradient(145deg,#171f2d,#101620)}
+.referee-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:14px}
+.referee-button{min-height:76px;border-radius:14px;padding:12px 10px;color:#fff;font-weight:800;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;box-shadow:0 5px 14px #0003}
+.referee-button span{font-size:25px;line-height:1}
+.referee-button small{font-size:12px;font-weight:700}
+.referee-kickoff{background:linear-gradient(135deg,#14834d,#20b66d)}
+.referee-foul{background:linear-gradient(135deg,#b96a16,#ed9d2e)}
+.referee-final{background:linear-gradient(135deg,#b6253d,#f04458)}
+.referee-yellow{background:linear-gradient(135deg,#b98b00,#ffdc36);color:#171717}
+.referee-red{background:linear-gradient(135deg,#9d1025,#f13a4e)}
+.referee-fields{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.referee-fields label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px}
+.referee-fields input,.referee-fields select{width:100%;min-width:0;background:#0b111b;color:var(--text);border:1px solid var(--border);border-radius:10px;padding:11px}
+.card-overlay{position:fixed;inset:0;z-index:1000;display:none;align-items:center;justify-content:center;padding:24px;background:rgba(0,0,0,.94);backdrop-filter:blur(10px)}
+.card-overlay.show{display:flex}
+.card-overlay-inner{width:min(100%,440px);text-align:center;animation:cardPop .22s ease-out}
+.big-card{width:min(66vw,240px);height:min(91vw,340px);max-height:54vh;border-radius:16px;margin:0 auto 24px;box-shadow:0 16px 60px #0009;border:4px solid #fff8}
+.big-card.yellow{background:linear-gradient(145deg,#fff05a,#ffbf00)}
+.big-card.red{background:linear-gradient(145deg,#ff5264,#b90021)}
+.card-overlay-title{font-size:clamp(27px,8vw,44px);font-weight:950;letter-spacing:.02em;margin-bottom:10px}
+.card-overlay-player{font-size:19px;color:#dce4ef;margin-bottom:24px;overflow-wrap:anywhere}
+.card-overlay-close{background:#fff;color:#10151d;border-radius:12px;padding:14px 24px;font-weight:850;width:100%;max-width:280px}
+@keyframes cardPop{from{opacity:0;transform:scale(.8) translateY(20px)}to{opacity:1;transform:scale(1) translateY(0)}}
+@media(min-width:520px){.referee-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 </style>
 </head>
 <body>
@@ -919,6 +948,34 @@ select:focus{
         </button>
       </div>
     </div>
+    <div class="card referee-card">
+      <h3>🧑‍⚖️ Schiedsrichter-Panel</h3>
+      <p class="page-subtitle">Pfiffe abspielen, Karten zeigen und Ereignisse direkt im Live-Ticker speichern.</p>
+      <div class="referee-fields">
+        <div>
+          <label for="refereeTeam">Team für Foul/Karte</label>
+          <select id="refereeTeam">
+            <option value="home">Heimteam</option>
+            <option value="away">Auswärtsteam</option>
+          </select>
+        </div>
+        <div>
+          <label for="refereeMinute">Spielminute</label>
+          <input id="refereeMinute" type="number" min="0" placeholder="Automatisch">
+        </div>
+        <div style="grid-column:1/-1">
+          <label for="refereePlayer">Spieler (optional)</label>
+          <input id="refereePlayer" placeholder="Name des Spielers">
+        </div>
+      </div>
+      <div class="referee-grid">
+        <button class="referee-button referee-kickoff" onclick="refereeAction('kickoff')"><span>📯</span><small>Anstoß-Pfiff</small></button>
+        <button class="referee-button referee-foul" onclick="refereeAction('foul')"><span>📣</span><small>Foul-Pfiff</small></button>
+        <button class="referee-button referee-final" onclick="refereeAction('final')"><span>🏁</span><small>Abpfiff</small></button>
+        <button class="referee-button referee-yellow" onclick="refereeAction('yellow')"><span>🟨</span><small>Gelbe Karte</small></button>
+        <button class="referee-button referee-red" onclick="refereeAction('red')"><span>🟥</span><small>Rote Karte</small></button>
+      </div>
+    </div>
     <div class="card">
       <h3>
         ⚡ Ereignis hinzufügen
@@ -1078,6 +1135,14 @@ select:focus{
     </button>
   </div>
 </nav>
+</div>
+<div id="cardOverlay" class="card-overlay" role="dialog" aria-modal="true" aria-label="Schiedsrichterkarte">
+  <div class="card-overlay-inner">
+    <div id="bigCard" class="big-card yellow" aria-hidden="true"></div>
+    <div id="cardOverlayTitle" class="card-overlay-title">GELBE KARTE</div>
+    <div id="cardOverlayPlayer" class="card-overlay-player"></div>
+    <button class="card-overlay-close" onclick="closeCardOverlay()">Schließen</button>
+  </div>
 </div>
 <div id="toast"></div>
 <script>
@@ -1956,8 +2021,131 @@ const eventTypes = {
   sub:{
     icon:"🔄",
     title:"Wechsel"
+  },
+  referee_kickoff_whistle:{
+    icon:"📯",
+    title:"Anstoßpfiff"
+  },
+  referee_foul_whistle:{
+    icon:"📣",
+    title:"Foulpfiff"
+  },
+  referee_final_whistle:{
+    icon:"🏁",
+    title:"Schlusspfiff"
   }
 };
+/* =====================================================
+   SCHIEDSRICHTER-PANEL: WHISTLE + KARTEN
+===================================================== */
+function playRefereeWhistle(kind){
+  try{
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if(!AudioContextClass){
+      toast("Ton wird von diesem Browser nicht unterstützt.");
+      return;
+    }
+    const ctx = new AudioContextClass();
+    if(ctx.state === "suspended"){
+      ctx.resume().catch(() => {});
+    }
+    const now = ctx.currentTime;
+    const duration = kind === "final" ? 1.05 : (kind === "kickoff" ? 0.72 : 0.42);
+    const master = ctx.createGain();
+    master.gain.setValueAtTime(0.0001, now);
+    master.gain.linearRampToValueAtTime(0.16, now + 0.035);
+    master.gain.setValueAtTime(0.12, now + Math.max(0.08, duration - 0.12));
+    master.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+    master.connect(ctx.destination);
+    [2050, 2470].forEach((frequency, index) => {
+      const osc = ctx.createOscillator();
+      const tone = ctx.createGain();
+      osc.type = "sawtooth";
+      osc.frequency.setValueAtTime(frequency, now);
+      osc.frequency.linearRampToValueAtTime(frequency + (index ? -120 : 160), now + duration);
+      tone.gain.value = index ? 0.34 : 0.66;
+      osc.connect(tone);
+      tone.connect(master);
+      osc.start(now);
+      osc.stop(now + duration + 0.02);
+    });
+    window.setTimeout(() => ctx.close().catch(() => {}), Math.ceil((duration + 0.2) * 1000));
+  }catch(error){
+    console.warn("[Hausfussball] Pfiff konnte nicht abgespielt werden:", error);
+  }
+}
+function showCardOverlay(type, player, team){
+  const overlay = document.getElementById("cardOverlay");
+  const card = document.getElementById("bigCard");
+  const title = document.getElementById("cardOverlayTitle");
+  const playerLabel = document.getElementById("cardOverlayPlayer");
+  const isRed = type === "red";
+  card.className = "big-card " + (isRed ? "red" : "yellow");
+  title.textContent = isRed ? "ROTE KARTE" : "GELBE KARTE";
+  const teamName = team === "away" ? data.awayTeam : data.homeTeam;
+  playerLabel.textContent = [player || "Spieler nicht angegeben", teamName || ""].filter(Boolean).join(" · ");
+  overlay.classList.add("show");
+  document.body.style.overflow = "hidden";
+  const closeButton = overlay.querySelector(".card-overlay-close");
+  if(closeButton) closeButton.focus();
+}
+function closeCardOverlay(){
+  document.getElementById("cardOverlay").classList.remove("show");
+  document.body.style.overflow = "";
+}
+document.addEventListener("keydown", event => {
+  if(event.key === "Escape") closeCardOverlay();
+});
+document.getElementById("cardOverlay").addEventListener("click", event => {
+  if(event.target.id === "cardOverlay") closeCardOverlay();
+});
+async function refereeAction(kind){
+  if(!adminLoggedIn){
+    toast("🔐 Bitte zuerst als Admin einloggen.");
+    return;
+  }
+  if(kind === "kickoff"){
+    if(data.status === "live"){
+      toast("⚽ Das Spiel läuft bereits.");
+      return;
+    }
+    if(data.status === "finished"){
+      toast("ℹ️ Das Spiel ist bereits beendet. Setze es zuerst zurück.");
+      return;
+    }
+    playRefereeWhistle("kickoff");
+    await startMatch();
+    return;
+  }
+  if(kind === "final"){
+    if(data.status === "finished"){
+      toast("🏁 Das Spiel ist bereits beendet.");
+      return;
+    }
+    playRefereeWhistle("final");
+    await finishMatch();
+    return;
+  }
+  const team = document.getElementById("refereeTeam").value;
+  const player = document.getElementById("refereePlayer").value.trim();
+  const minuteValue = document.getElementById("refereeMinute").value;
+  document.getElementById("eventTeam").value = team;
+  document.getElementById("eventPlayer").value = player;
+  document.getElementById("eventMinute").value = minuteValue;
+  if(kind === "foul"){
+    playRefereeWhistle("foul");
+    await addEvent("foul");
+    document.getElementById("refereePlayer").value = "";
+    document.getElementById("refereeMinute").value = "";
+    return;
+  }
+  if(kind === "yellow" || kind === "red"){
+    await addEvent(kind);
+    showCardOverlay(kind, player, team);
+    document.getElementById("refereePlayer").value = "";
+    document.getElementById("refereeMinute").value = "";
+  }
+}
 /* =====================================================
    EVENT HINZUFÜGEN
 ===================================================== */

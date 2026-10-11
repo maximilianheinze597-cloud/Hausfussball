@@ -1,0 +1,62 @@
+name: Validate Hausfußball PWA
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Validate manifest and icons, extract inline JavaScript
+        run: |
+          python - <<'PY'
+          import json
+          from html.parser import HTMLParser
+          from pathlib import Path
+
+          root = Path(".")
+          manifest = json.loads((root / "manifest.json").read_text(encoding="utf-8"))
+          for icon in manifest.get("icons", []):
+              path = root / icon["src"]
+              if not path.is_file():
+                  raise SystemExit(f"Missing PWA icon: {path}")
+          html = (root / "index.html").read_text(encoding="utf-8")
+
+          class InlineScriptExtractor(HTMLParser):
+              def __init__(self):
+                  super().__init__()
+                  self.inside = False
+                  self.parts = []
+                  self.scripts = []
+              def handle_starttag(self, tag, attrs):
+                  if tag.lower() == "script" and not dict(attrs).get("src"):
+                      self.inside = True
+                      self.parts = []
+              def handle_data(self, data):
+                  if self.inside:
+                      self.parts.append(data)
+              def handle_endtag(self, tag):
+                  if tag.lower() == "script" and self.inside:
+                      self.scripts.append("".join(self.parts))
+                      self.inside = False
+
+          parser = InlineScriptExtractor()
+          parser.feed(html)
+          if not parser.scripts:
+              raise SystemExit("No inline JavaScript found in index.html")
+          (root / "inline-app-check.js").write_text("\n".join(parser.scripts), encoding="utf-8")
+          print(f"Validated {len(manifest.get('icons', []))} manifest icons and extracted {len(parser.scripts)} inline script(s).")
+          PY
+      - name: Check inline JavaScript syntax
+        run: node --check inline-app-check.js
+      - name: Check service worker syntax
+        run: node --check litepush-sw.js
