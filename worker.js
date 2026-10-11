@@ -917,7 +917,7 @@ async function sendFirebasePush(env, title, body, topic) {
       const payload = await response.json().catch(() => ({}));
       if (response.ok) return { ok: true };
       const errorText = JSON.stringify(payload);
-      if (response.status === 404 || /UNREGISTERED|registration-token-not-registered|INVALID_ARGUMENT/.test(errorText)) {
+      if (response.status === 404 || /UNREGISTERED|registration-token-not-registered/.test(errorText)) {
         await env.DB.prepare("DELETE FROM push_tokens WHERE token = ?").bind(token).run();
       }
       console.error("FCM Nachricht fehlgeschlagen:", response.status, errorText.slice(0, 500));
