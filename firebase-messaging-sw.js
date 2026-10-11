@@ -9,19 +9,18 @@ if (self.HAUSFUSSBALL_FIREBASE_CONFIG &&
   const messaging = firebase.messaging();
 
   messaging.onBackgroundMessage(payload => {
-    // FCM zeigt Notification-Payloads selbst an. Reine Data-Payloads
-    // werden hier als Web-Benachrichtigung angezeigt.
-    if (payload && !payload.notification) {
-      const data = payload.data || {};
-      return self.registration.showNotification(data.title || "⚽ Hausfußball", {
-        body: data.body || "Neues Ereignis im Live-Ticker.",
-        icon: new URL("./icon-192.svg", self.registration.scope).href,
-        badge: new URL("./icon-192.svg", self.registration.scope).href,
-        data: { url: data.url || new URL("./", self.registration.scope).href },
-        tag: data.topic || "hausfussball",
-        renotify: true
-      });
-    }
+    // Die Benachrichtigung wird hier explizit angezeigt, damit sie auch
+    // bei gesetztem onBackgroundMessage-Handler sicher sichtbar ist.
+    const data = payload?.data || {};
+    const notification = payload?.notification || {};
+    return self.registration.showNotification(notification.title || data.title || "⚽ Hausfußball", {
+      body: notification.body || data.body || "Neues Ereignis im Live-Ticker.",
+      icon: new URL("./icon-192.svg", self.registration.scope).href,
+      badge: new URL("./icon-192.svg", self.registration.scope).href,
+      data: { url: data.url || new URL("./", self.registration.scope).href },
+      tag: data.topic || "hausfussball",
+      renotify: true
+    });
   });
 }
 
