@@ -807,7 +807,7 @@ async function ensurePushTable(env) {
 function base64UrlFromBytes(bytes) {
   let binary = "";
   for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
-  return btoa(binary).replace(/=/g, "").replace(/\\+/g, "-").replace(/\\//g, "_");
+  return btoa(binary).replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
 }
 
 function base64UrlFromText(value) {
@@ -816,7 +816,7 @@ function base64UrlFromText(value) {
 
 function pemToArrayBuffer(pem) {
   const base64 = pem.replace(/-----BEGIN PRIVATE KEY-----/g, "")
-    .replace(/-----END PRIVATE KEY-----/g, "").replace(/\\s/g, "");
+    .replace(/-----END PRIVATE KEY-----/g, "").replace(/\s/g, "");
   const binary = atob(base64);
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
