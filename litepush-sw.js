@@ -147,7 +147,7 @@ self.addEventListener(
 
     const target =
       event.notification?.data?.url ||
-      "/Hausfussball/";
+      new URL("./", self.registration.scope).href;
 
 
     event.waitUntil(
