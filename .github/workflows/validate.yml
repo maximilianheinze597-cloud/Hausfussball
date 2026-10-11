@@ -58,3 +58,5 @@ jobs:
           PY
       - name: Check inline JavaScript syntax
         run: node --check inline-app-check.js
+      - name: Check service worker syntax
+        run: node --check litepush-sw.js
