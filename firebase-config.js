@@ -13,7 +13,7 @@ self.HAUSFUSSBALL_FIREBASE_CONFIG = {
   messagingSenderId: "993563856895",
   appId: "1:993563856895:web:9de5ebd3f028d7670621ca"
 };
-self.HAUSFUSSBALL_FCM_VAPID_KEY = "BGcYglPLwCf0w1EzSiMBWSAoVftUGV0ZFnmmkPJ48Rryr_v8vinBmhDrnP-HDUw0HqfRaSIBUMhvnvQUpsqQ88";
+self.HAUSFUSSBALL_FCM_VAPID_KEY = "BGcYglPLwCf0w1EzSiMBWSAoVftUGV0ZFnmmkPJ48Rryr_v8vinBmhDrnP-HDUw0HqfRaSIBUMhvnvQUpsqQ88M";
 
 /* Supabase-Projektwerte später hier eintragen; keine Admin-/service_role-Keys verwenden. */
 self.HAUSFUSSBALL_SUPABASE_URL = "";
