@@ -58,5 +58,9 @@ jobs:
           PY
       - name: Check inline JavaScript syntax
         run: node --check inline-app-check.js
-      - name: Check service worker syntax
-        run: node --check litepush-sw.js
+      - name: Check Firebase service worker syntax
+        run: node --check firebase-messaging-sw.js
+      - name: Check Cloudflare Worker syntax
+        run: node --check --input-type=module < worker.js
+      - name: Check Firebase config syntax
+        run: node --check firebase-config.js

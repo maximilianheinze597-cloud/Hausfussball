@@ -33,36 +33,64 @@ export default {
         ok: true,
         app: "Hausfussball",
         message: "Hausfussball API läuft",
-        pushConfigured: Boolean(env.LITEPUSH_API_KEY)
+        pushConfigured: Boolean(env.FIREBASE_SERVICE_ACCOUNT_JSON)
       }, cors);
 
     }
 
 
     // =========================================
-    // PUSH TEST
-    // GET /api/push-test
+    // FIREBASE PUSH REGISTRATION
+    // POST /api/push/subscribe
+    // DELETE /api/push/subscribe
     // =========================================
-
-    if (
-      url.pathname === "/api/push-test" &&
-      request.method === "GET"
-    ) {
-
-      const result = await sendLitePush(
-        env,
-        "⚽ Hausfussball Test",
-        "Push-Benachrichtigungen funktionieren!",
-        "push-test"
-      );
-
-      return json({
-        ok: result.ok,
-        push: result
-      }, cors, result.ok ? 200 : 500);
-
+    if (url.pathname === "/api/push/subscribe" && request.method === "POST") {
+      try {
+        const body = await request.json();
+        const token = typeof body.token === "string" ? body.token.trim() : "";
+        if (token.length < 100 || token.length > 8192) {
+          return json({ ok: false, error: "Ungültiges Firebase-Geräte-Token." }, cors, 400);
+        }
+        await ensurePushTable(env);
+        await env.DB.prepare(
+          "INSERT INTO push_tokens (token, created_at, updated_at) VALUES (?, ?, ?) ON CONFLICT(token) DO UPDATE SET updated_at = excluded.updated_at"
+        ).bind(token, Date.now(), Date.now()).run();
+        return json({ ok: true, registered: true }, cors);
+      } catch (error) {
+        console.error("POST /api/push/subscribe:", error);
+        return json({ ok: false, error: "Push-Token konnte nicht gespeichert werden." }, cors, 500);
+      }
     }
 
+    if (url.pathname === "/api/push/subscribe" && request.method === "DELETE") {
+      try {
+        const body = await request.json();
+        const token = typeof body.token === "string" ? body.token.trim() : "";
+        if (token) {
+          await ensurePushTable(env);
+          await env.DB.prepare("DELETE FROM push_tokens WHERE token = ?").bind(token).run();
+        }
+        return json({ ok: true, removed: true }, cors);
+      } catch (error) {
+        console.error("DELETE /api/push/subscribe:", error);
+        return json({ ok: false, error: "Push-Token konnte nicht entfernt werden." }, cors, 500);
+      }
+    }
+
+    if (url.pathname === "/api/push-status" && request.method === "GET") {
+      try {
+        await ensurePushTable(env);
+        const row = await env.DB.prepare("SELECT COUNT(*) AS count FROM push_tokens").first();
+        return json({
+          ok: true,
+          provider: "Firebase Cloud Messaging",
+          configured: Boolean(env.FIREBASE_SERVICE_ACCOUNT_JSON),
+          registeredDevices: Number(row?.count || 0)
+        }, cors);
+      } catch (error) {
+        return json({ ok: false, error: "Push-Status nicht verfügbar." }, cors, 500);
+      }
+    }
 
     // =========================================
     // SPIELSTAND LADEN
@@ -748,7 +776,7 @@ async function sendPushForEvent(
   }
 
 
-  return await sendLitePush(
+  return await sendFirebasePush(
     env,
     title,
     body,
@@ -759,187 +787,149 @@ async function sendPushForEvent(
 
 
 // =====================================================
-// LITEPUSH SEND
+// FIREBASE CLOUD MESSAGING SEND
+// Cloudflare secret: FIREBASE_SERVICE_ACCOUNT_JSON
 // =====================================================
-
-async function sendLitePush(
-  env,
-  title,
-  body,
-  topic
-) {
-
-  // =========================================
-  // API KEY
-  // =========================================
-
-  if (
-    !env.LITEPUSH_API_KEY
-  ) {
-
-    console.error(
-      "LITEPUSH_API_KEY fehlt"
-    );
-
-    return {
-
-      ok: false,
-
-      error:
-        "LITEPUSH_API_KEY fehlt"
-
-    };
-
-  }
-
-
-  try {
-
-    const response =
-      await fetch(
-        "https://api.litepush.dev/v1/send",
-        {
-
-          method:
-            "POST",
-
-          headers: {
-
-            "Authorization":
-              `Bearer ${env.LITEPUSH_API_KEY}`,
-
-            "Content-Type":
-              "application/json",
-
-            "Accept":
-              "application/json"
-
-          },
-
-          body:
-            JSON.stringify({
-
-              target: {
-
-                type:
-                  "all"
-
-              },
-
-              notification: {
-
-                title:
-                  title,
-
-                body:
-                  body,
-
-                url:
-                  "https://hausfussball-live.maximilianheinze597.workers.dev/"
-
-              },
-
-              urgency:
-                "high",
-
-              ttl:
-                86400,
-
-              topic:
-                topic
-
-            })
-
-        }
-      );
-
-
-    const text =
-      await response.text();
-
-    let result;
-
-    try {
-
-      result =
-        text
-          ? JSON.parse(text)
-          : null;
-
-    } catch {
-
-      result = {
-        raw:
-          text
-      };
-
-    }
-
-
-    if (
-      !response.ok
-    ) {
-
-      console.error(
-        "LitePush Fehler:",
-        response.status,
-        result
-      );
-
-      return {
-
-        ok: false,
-
-        status:
-          response.status,
-
-        response:
-          result
-
-      };
-
-    }
-
-
-    console.log(
-      "LitePush erfolgreich:",
-      result
-    );
-
-
-    return {
-
-      ok: true,
-
-      status:
-        response.status,
-
-      response:
-        result
-
-    };
-
-
-  } catch (error) {
-
-    console.error(
-      "LitePush Verbindung fehlgeschlagen:",
-      error
-    );
-
-    return {
-
-      ok: false,
-
-      error:
-        error.message
-
-    };
-
-  }
-
+let cachedFcmAccessToken = "";
+let cachedFcmTokenExpiresAt = 0;
+let cachedFcmProjectId = "";
+
+async function ensurePushTable(env) {
+  await env.DB.prepare(`
+    CREATE TABLE IF NOT EXISTS push_tokens (
+      token TEXT PRIMARY KEY,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    )
+  `).run();
 }
 
+function base64UrlFromBytes(bytes) {
+  let binary = "";
+  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+  return btoa(binary).replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
+}
+
+function base64UrlFromText(value) {
+  return base64UrlFromBytes(new TextEncoder().encode(value));
+}
+
+function pemToArrayBuffer(pem) {
+  const base64 = pem.replace(/-----BEGIN PRIVATE KEY-----/g, "")
+    .replace(/-----END PRIVATE KEY-----/g, "").replace(/\s/g, "");
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes.buffer;
+}
+
+async function getFcmAccessToken(env) {
+  if (cachedFcmAccessToken && Date.now() < cachedFcmTokenExpiresAt - 60000) {
+    return { token: cachedFcmAccessToken, projectId: cachedFcmProjectId };
+  }
+  if (!env.FIREBASE_SERVICE_ACCOUNT_JSON) {
+    throw new Error("Firebase ist nicht konfiguriert: FIREBASE_SERVICE_ACCOUNT_JSON fehlt.");
+  }
+
+  let account;
+  try {
+    account = JSON.parse(env.FIREBASE_SERVICE_ACCOUNT_JSON);
+  } catch {
+    throw new Error("FIREBASE_SERVICE_ACCOUNT_JSON ist kein gültiges JSON.");
+  }
+  if (!account.client_email || !account.private_key || !account.project_id) {
+    throw new Error("Firebase-Service-Account benötigt client_email, private_key und project_id.");
+  }
+
+  const now = Math.floor(Date.now() / 1000);
+  const header = base64UrlFromText(JSON.stringify({ alg: "RS256", typ: "JWT" }));
+  const claims = base64UrlFromText(JSON.stringify({
+    iss: account.client_email,
+    scope: "https://www.googleapis.com/auth/firebase.messaging",
+    aud: "https://oauth2.googleapis.com/token",
+    iat: now,
+    exp: now + 3600
+  }));
+  const unsignedJwt = header + "." + claims;
+  const privateKey = await crypto.subtle.importKey(
+    "pkcs8",
+    pemToArrayBuffer(account.private_key),
+    { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+  const signature = await crypto.subtle.sign(
+    "RSASSA-PKCS1-v1_5",
+    privateKey,
+    new TextEncoder().encode(unsignedJwt)
+  );
+  const assertion = unsignedJwt + "." + base64UrlFromBytes(new Uint8Array(signature));
+  const response = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
+      assertion
+    })
+  });
+  const result = await response.json();
+  if (!response.ok || !result.access_token) {
+    console.error("Firebase OAuth fehlgeschlagen:", result.error || response.status);
+    throw new Error("Firebase konnte kein Zugriffstoken ausstellen.");
+  }
+  cachedFcmAccessToken = result.access_token;
+  cachedFcmTokenExpiresAt = Date.now() + Number(result.expires_in || 3600) * 1000;
+  cachedFcmProjectId = account.project_id;
+  return { token: cachedFcmAccessToken, projectId: cachedFcmProjectId };
+}
+
+async function sendFirebasePush(env, title, body, topic) {
+  try {
+    await ensurePushTable(env);
+    const rows = await env.DB.prepare("SELECT token FROM push_tokens").all();
+    const tokens = (rows.results || []).map(row => row.token).filter(Boolean);
+    if (!tokens.length) {
+      return { ok: true, provider: "fcm", delivered: 0, message: "Noch keine Geräte registriert." };
+    }
+    const auth = await getFcmAccessToken(env);
+    const results = await Promise.all(tokens.map(async token => {
+      const response = await fetch(
+        "https://fcm.googleapis.com/v1/projects/" + encodeURIComponent(auth.projectId) + "/messages:send",
+        {
+          method: "POST",
+          headers: {
+            "Authorization": "Bearer " + auth.token,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            message: {
+              token,
+              notification: { title, body },
+              data: { topic: String(topic || "hausfussball"), url: "https://maximilianheinze597-cloud.github.io/Hausfussball/" },
+              webpush: {
+                headers: { Urgency: "high", TTL: "86400" },
+                fcmOptions: { link: "https://maximilianheinze597-cloud.github.io/Hausfussball/" }
+              }
+            }
+          })
+        }
+      );
+      const payload = await response.json().catch(() => ({}));
+      if (response.ok) return { ok: true };
+      const errorText = JSON.stringify(payload);
+      if (response.status === 404 || /UNREGISTERED|registration-token-not-registered/.test(errorText)) {
+        await env.DB.prepare("DELETE FROM push_tokens WHERE token = ?").bind(token).run();
+      }
+      console.error("FCM Nachricht fehlgeschlagen:", response.status, errorText.slice(0, 500));
+      return { ok: false, status: response.status };
+    }));
+    const delivered = results.filter(result => result.ok).length;
+    return { ok: delivered > 0, provider: "fcm", delivered, failed: results.length - delivered };
+  } catch (error) {
+    console.error("Firebase Push Fehler:", error);
+    return { ok: false, provider: "fcm", error: error.message };
+  }
+}
 
 // =====================================================
 // STATE NORMALISIEREN
