@@ -20,6 +20,7 @@
   content="Hausfussball"
 >
 <link rel="manifest" href="./manifest.json">
+<link rel="icon" type="image/svg+xml" href="./icon-192.svg">
 <meta name="mobile-web-app-capable" content="yes">
 <title>Hausfussball</title>
 <!-- =====================================================
@@ -2045,6 +2046,9 @@ function playRefereeWhistle(kind){
       return;
     }
     const ctx = new AudioContextClass();
+    if(ctx.state === "suspended"){
+      ctx.resume().catch(() => {});
+    }
     const now = ctx.currentTime;
     const duration = kind === "final" ? 1.05 : (kind === "kickoff" ? 0.72 : 0.42);
     const master = ctx.createGain();
@@ -2081,21 +2085,43 @@ function showCardOverlay(type, player, team){
   const teamName = team === "away" ? data.awayTeam : data.homeTeam;
   playerLabel.textContent = [player || "Spieler nicht angegeben", teamName || ""].filter(Boolean).join(" · ");
   overlay.classList.add("show");
+  document.body.style.overflow = "hidden";
+  const closeButton = overlay.querySelector(".card-overlay-close");
+  if(closeButton) closeButton.focus();
 }
 function closeCardOverlay(){
   document.getElementById("cardOverlay").classList.remove("show");
+  document.body.style.overflow = "";
 }
+document.addEventListener("keydown", event => {
+  if(event.key === "Escape") closeCardOverlay();
+});
+document.getElementById("cardOverlay").addEventListener("click", event => {
+  if(event.target.id === "cardOverlay") closeCardOverlay();
+});
 async function refereeAction(kind){
   if(!adminLoggedIn){
     toast("🔐 Bitte zuerst als Admin einloggen.");
     return;
   }
   if(kind === "kickoff"){
+    if(data.status === "live"){
+      toast("⚽ Das Spiel läuft bereits.");
+      return;
+    }
+    if(data.status === "finished"){
+      toast("ℹ️ Das Spiel ist bereits beendet. Setze es zuerst zurück.");
+      return;
+    }
     playRefereeWhistle("kickoff");
     await startMatch();
     return;
   }
   if(kind === "final"){
+    if(data.status === "finished"){
+      toast("🏁 Das Spiel ist bereits beendet.");
+      return;
+    }
     playRefereeWhistle("final");
     await finishMatch();
     return;
