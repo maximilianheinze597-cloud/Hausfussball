@@ -5,29 +5,84 @@
  * /Hausfussball/litepush-sw.js
  */
 
-self.addEventListener("install", function(event){
+const APP_CACHE = "hausfussball-shell-v1";
+const APP_SHELL = [
+  "./",
+  "./index.html",
+  "./manifest.json",
+  "./icon-192.svg",
+  "./icon-512.svg",
+  "./live.html"
+];
 
-  console.log(
-    "[Hausfußball] LitePush Service Worker installiert."
+self.addEventListener("install", function(event){
+  console.log("[Hausfußball] LitePush/PWA Service Worker installiert.");
+
+  event.waitUntil(
+    caches.open(APP_CACHE)
+      .then(cache => cache.addAll(APP_SHELL))
+      .catch(error => {
+        console.warn("[Hausfußball] Offline-Cache konnte nicht vollständig angelegt werden:", error);
+      })
   );
 
   self.skipWaiting();
-
 });
 
 
 self.addEventListener("activate", function(event){
-
-  console.log(
-    "[Hausfußball] LitePush Service Worker aktiviert."
-  );
+  console.log("[Hausfußball] LitePush/PWA Service Worker aktiviert.");
 
   event.waitUntil(
-    self.clients.claim()
+    caches.keys()
+      .then(keys => Promise.all(
+        keys.filter(key => key.startsWith("hausfussball-shell-") && key !== APP_CACHE)
+          .map(key => caches.delete(key))
+      ))
+      .then(() => self.clients.claim())
   );
-
 });
 
+
+self.addEventListener("fetch", function(event){
+  const request = event.request;
+  if(request.method !== "GET") return;
+
+  const requestUrl = new URL(request.url);
+  if(requestUrl.origin !== self.location.origin) return;
+  if(requestUrl.pathname.includes("/api/")) return;
+
+  if(request.mode === "navigate"){
+    event.respondWith(
+      fetch(request)
+        .then(response => {
+          if(response && response.ok){
+            const copy = response.clone();
+            caches.open(APP_CACHE).then(cache => cache.put("./", copy));
+          }
+          return response;
+        })
+        .catch(async () => {
+          const cache = await caches.open(APP_CACHE);
+          return await cache.match(request) || await cache.match("./") || Response.error();
+        })
+    );
+    return;
+  }
+
+  event.respondWith(
+    caches.match(request).then(cached => {
+      if(cached) return cached;
+      return fetch(request).then(response => {
+        if(response && response.ok){
+          const copy = response.clone();
+          caches.open(APP_CACHE).then(cache => cache.put(request, copy));
+        }
+        return response;
+      });
+    })
+  );
+});
 
 self.addEventListener("push", function(event){
 
