@@ -85,22 +85,24 @@ self.addEventListener("push", function(event){
     "Neues Ereignis bei Hausfußball.";
 
 
+  const appBase = self.registration.scope;
+  const defaultIcon = new URL("./icon-192.svg", appBase).href;
+  const defaultAppUrl = new URL("./", appBase).href;
+
   const icon =
     data.icon ||
     data.notification?.icon ||
-    "/Hausfussball/icon-192.png";
-
+    defaultIcon;
 
   const badge =
     data.badge ||
-    "/Hausfussball/icon-192.png";
-
+    defaultIcon;
 
   const url =
     data.url ||
     data.notification?.url ||
     data.data?.url ||
-    "/Hausfussball/";
+    defaultAppUrl;
 
 
   const options = {
