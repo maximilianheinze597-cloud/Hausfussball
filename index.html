@@ -975,6 +975,7 @@ select:focus{
         <button class="referee-button referee-yellow" onclick="refereeAction('yellow')"><span>🟨</span><small>Gelbe Karte</small></button>
         <button class="referee-button referee-red" onclick="refereeAction('red')"><span>🟥</span><small>Rote Karte</small></button>
       </div>
+      <p class="page-subtitle referee-sound-credit">Original-Pfiffe von <a href="https://orangefreesounds.com/whistle-sound/" target="_blank" rel="noopener noreferrer">Whistle Sound</a>, <a href="https://orangefreesounds.com/warning-whistle-several-blows/" target="_blank" rel="noopener noreferrer">Warning Whistle</a> und <a href="https://orangefreesounds.com/whistle-noise/" target="_blank" rel="noopener noreferrer">Whistle Noise</a> (Alexander / Orange Free Sounds, CC BY-NC 4.0).</p>
     </div>
     <div class="card">
       <h3>
@@ -2038,23 +2039,23 @@ const eventTypes = {
 /* =====================================================
    SCHIEDSRICHTER-PANEL: WHISTLE + KARTEN
 ===================================================== */
-function playRefereeWhistle(kind){
+const refereeSoundUrls = {
+  kickoff: "https://orangefreesounds.com/wp-content/uploads/2015/02/Whistle-sound.mp3",
+  foul: "https://orangefreesounds.com/wp-content/uploads/2020/07/Warning-whistle.mp3",
+  final: "https://orangefreesounds.com/wp-content/uploads/2015/12/Whistle-noise.mp3"
+};
+
+function playSyntheticWhistle(kind){
   try{
     const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-    if(!AudioContextClass){
-      toast("Ton wird von diesem Browser nicht unterstützt.");
-      return;
-    }
+    if(!AudioContextClass) return;
     const ctx = new AudioContextClass();
-    if(ctx.state === "suspended"){
-      ctx.resume().catch(() => {});
-    }
     const now = ctx.currentTime;
     const duration = kind === "final" ? 1.05 : (kind === "kickoff" ? 0.72 : 0.42);
     const master = ctx.createGain();
     master.gain.setValueAtTime(0.0001, now);
-    master.gain.linearRampToValueAtTime(0.16, now + 0.035);
-    master.gain.setValueAtTime(0.12, now + Math.max(0.08, duration - 0.12));
+    master.gain.linearRampToValueAtTime(0.12, now + 0.035);
+    master.gain.setValueAtTime(0.09, now + Math.max(0.08, duration - 0.12));
     master.gain.exponentialRampToValueAtTime(0.0001, now + duration);
     master.connect(ctx.destination);
     [2050, 2470].forEach((frequency, index) => {
@@ -2071,7 +2072,39 @@ function playRefereeWhistle(kind){
     });
     window.setTimeout(() => ctx.close().catch(() => {}), Math.ceil((duration + 0.2) * 1000));
   }catch(error){
-    console.warn("[Hausfussball] Pfiff konnte nicht abgespielt werden:", error);
+    console.warn("[Hausfußball] Ersatzpfiff konnte nicht abgespielt werden:", error);
+  }
+}
+
+function playRefereeWhistle(kind){
+  const url = refereeSoundUrls[kind];
+  if(!url){
+    playSyntheticWhistle(kind);
+    return;
+  }
+  const audio = new Audio(url);
+  audio.preload = "auto";
+  audio.volume = 0.9;
+  let fallbackUsed = false;
+  const fallback = () => {
+    if(fallbackUsed) return;
+    fallbackUsed = true;
+    playSyntheticWhistle(kind);
+  };
+  const fallbackTimer = window.setTimeout(() => {
+    if(audio.paused && audio.currentTime === 0) fallback();
+  }, 1400);
+  audio.addEventListener("playing", () => window.clearTimeout(fallbackTimer), {once:true});
+  audio.addEventListener("error", () => {
+    window.clearTimeout(fallbackTimer);
+    fallback();
+  }, {once:true});
+  const playback = audio.play();
+  if(playback && typeof playback.catch === "function"){
+    playback.catch(() => {
+      window.clearTimeout(fallbackTimer);
+      fallback();
+    });
   }
 }
 function showCardOverlay(type, player, team){
